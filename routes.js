@@ -4,7 +4,6 @@ const multer = require('multer');
 const fs = require('fs');
 const winston = require('winston');
 
-PDFParser = require("pdf2json");
 
 const router = express.Router();
 const storage = multer.diskStorage({
@@ -87,51 +86,6 @@ router.use((req, res, next) => {
         console.log(err);
     })
     next();
-});
-
-router.post('/cv', upload.single("cvFile"), (req, res) => {
-    //parse PDF to raw .txt file
-    const pdfParser = new PDFParser(this, 1);
-    const first_name = req.body.firstName;
-    const last_name = req.body.lastName;
-    const file_name = first_name + "_" + last_name + "_" + "CV_parsed_raw.content.txt"
-    const pdf_name = req.file.path.split("/")[1]
-
-    pdfParser.on("pdfParser_dataError", errData => {
-        console.error(errData.parserError);
-    })
-    .on("pdfParser_dataReady", _ => {
-        const cv_content = pdfParser.getRawTextContent();
-        const body = {
-            first_name,
-            last_name,
-            file_name: pdf_name,
-            content: cv_content,
-        }
-
-        fs.writeFile("uploads/" + file_name, cv_content, () => {
-            console.log(file_name + " file upload done.");
-        });
-
-        elasticClient.index({
-            index: 'cv_index',
-            body: body,
-        })
-        .then(resp => {
-            return res.status(200).json({
-                msg: "Your CV has been uploaded to the database! ",
-            });
-        })
-        .catch(err => {
-            return res.status(500).json({
-                msg: 'Error',
-                err
-            });
-        });
-    });
-    pdfParser.loadPDF(req.file.path);
-
-    //cleanUpDirectory(req).then(r => console.log("Directory cleaned."))
 });
 
 router.get('/cv/:file', (req, res) => {
