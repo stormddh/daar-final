@@ -1,38 +1,19 @@
 <template>
   <div class="container">
     <div>
-      <h2>First Name</h2>
-      <input class="form" type="text" v-model="firstName"/>
-    </div>
-    <div>
-      <h2>Last Name</h2>
-      <input class="form" type="text" v-model="lastName"/>
-    </div>
-    <div>
-      <h2>CV file</h2>
-      <input type="file" class="upload" id="file" accept=
-          "application/msword, application/pdf" ref="file" v-on:change="handleFileUpload()"/>
-    </div>
-    <div>
-      <h2>Submit</h2>
-      <input class="button" type="submit" value="Submit!" v-on:click="submitApplication"/>
-    </div>
-
-    <div>
-      <h2>Search the CV database:</h2>
-      <div>To browse through the database of resumes, type in a desired skill or technology and a list of adequate
-        applicants will be shown. F.ex "Java" or "Git"
+      <h2>Search the Library database:</h2>
+      <div>To browse through the books in Library, type in a searched phrase or author and a list of adequate
+        books will be shown. F.ex "Victor Hugo" or "Odyssey"
       </div>
       <input class="form" type="text" v-model="query"/>
       <input class="search-button" type="submit" value="Search!" v-on:click="queryDatabase"/>
     </div>
-    <h2 v-if="showQuery"> List of applicants for given query: {{query}}</h2>
+    <h2 v-if="showQuery"> List of books for given query: {{query}}</h2>
 
     <div class="list-container">
-      <div class="list-entry" v-for="applicant in applicants" :key="applicant">
+      <div class="list-entry" v-for="book in books" :key="book">
         <img class="avatar" :src="avatar">
-        {{ applicant._source.first_name }} {{ applicant._source.last_name }}
-        <a :href="'/cv/' + applicant._source.file_name">PDF</a>
+        {{ book }}
       </div>
     </div>
 
@@ -41,7 +22,7 @@
 
 <script>
 import axios from 'axios';
-import FormData from 'form-data';
+// import FormData from 'form-data';
 
 export default {
   name: 'App',
@@ -52,49 +33,49 @@ export default {
       lastName: '',
       myFile: '',
       query: '',
-      applicants: [],
+      books: [],
       avatar: require('./assets/default-avatar.png'),
       showQuery: false
     }
   },
   methods: {
 
-    async handleFileUpload() {
-      if (this.$refs.file.files[0].size / 1024 / 1024 < 5) {
-        this.myFile = this.$refs.file.files[0];
-      } else {
-        alert('Maximum file size is 5 MB! Your file size is ' + (Math.round(this.$refs.file.files[0].size / 1024 / 1024 * 100) / 100) + "MB");
-        location.reload();
-      }
-    },
-    async submitApplication() {
-      if (this.myFile) {
-        var data = new FormData();
-        data.append('firstName', this.firstName);
-        data.append('lastName', this.lastName);
-        data.append('cvFile', this.myFile);
-
-        var config = {
-          method: 'post',
-          url: '/api/cv/',
-          data: data
-        };
-
-        axios(config)
-            .then(function (response) {
-              console.log(JSON.stringify(response.data));
-            })
-            .catch(function (error) {
-              console.log(error);
-            });
-      } else {
-        window.alert("Please select a file to upload !");
-      }
-
-    },
+                    // async handleFileUpload() {
+                    //   if (this.$refs.file.files[0].size / 1024 / 1024 < 5) {
+                    //     this.myFile = this.$refs.file.files[0];
+                    //   } else {
+                    //     alert('Maximum file size is 5 MB! Your file size is ' + (Math.round(this.$refs.file.files[0].size / 1024 / 1024 * 100) / 100) + "MB");
+                    //     location.reload();
+                    //   }
+                    // },
+                    // async submitApplication() {
+                    //   if (this.myFile) {
+                    //     var data = new FormData();
+                    //     data.append('firstName', this.firstName);
+                    //     data.append('lastName', this.lastName);
+                    //     data.append('cvFile', this.myFile);
+                    //
+                    //     var config = {
+                    //       method: 'post',
+                    //       url: '/api/cv/',
+                    //       data: data
+                    //     };
+                    //
+                    //     axios(config)
+                    //         .then(function (response) {
+                    //           console.log(JSON.stringify(response.data));
+                    //         })
+                    //         .catch(function (error) {
+                    //           console.log(error);
+                    //         });
+                    //   } else {
+                    //     window.alert("Please select a file to upload !");
+                    //   }
+                    //
+                    // },
     queryDatabase() {
       //todo  // here in the GET URL will come the this.query variable from the input form, f.ex "Java"
-      axios.get('/api/cv?search=' + this.query,
+      axios.get('/api/book?search=' + this.query,
           {
             headers: {
               'Content-Type': 'multipart/form-data'
@@ -102,10 +83,10 @@ export default {
           }
       ).then(res => {
         this.showQuery = true;
-        this.applicants = [];
-        let json = JSON.parse(JSON.stringify(res.data.cv));
+        this.books = [];
+        let json = JSON.parse(JSON.stringify(res.data.book));
         for (let entry in json) {
-          this.applicants.push(json[entry])
+          this.books.push(json[entry])
         }
         console.log(res.data)
       })

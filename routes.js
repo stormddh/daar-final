@@ -53,9 +53,19 @@ elasticClient.ping(
     }
 );
 
+const uploadsFolder = './uploads';
+var books = []
+var filteredResults = []
+fs.readdir(uploadsFolder, (err, files) => {
+    files.forEach(file => {
+        books.push(file)
+    });
+    console.log("Books list:" + books);
+});
+
 async function setup_index () {
     await elasticClient.indices.create({
-      index: 'cv_index',
+      index: 'book_index',
       body: {
         mappings: {
           properties: {
@@ -88,13 +98,13 @@ router.use((req, res, next) => {
     next();
 });
 
-router.get('/cv/:file', (req, res) => {
+router.get('/book/:file', (req, res) => {
     const file_name = req.params.file
-    const cv_path = "uploads/" + file_name
+    const book_path = "uploads/" + file_name
 
-    if (fs.existsSync(cv_path)) {
+    if (fs.existsSync(book_path)) {
         res.contentType("application/pdf");
-        fs.createReadStream(cv_path).pipe(res);
+        fs.createReadStream(book_path).pipe(res);
     } else {
         res.status(500);
         elk_logging('File not found');
@@ -102,10 +112,11 @@ router.get('/cv/:file', (req, res) => {
     }
 });
 
-router.get('/cv', (req, res) => {
+router.get('/book', (req, res) => {
+    let filteredResults = filterResults(req.query.search)
     if (req.query.search) {
         elasticClient.search({
-            index: 'cv_index',
+            index: 'book_index',
             body: {
                 query: {
                     match: {
@@ -116,7 +127,7 @@ router.get('/cv', (req, res) => {
         })
         .then(resp => {
             return res.status(200).json({
-                cv: resp.body.hits.hits,
+                book: filteredResults,
             });
         })
         .catch(err => {
@@ -150,5 +161,16 @@ const elk_logging = (message) => {
         console.log(message);
     }
 }
-
+function filterResults(query) {
+    let filteredBooks = []
+    for (let book in books){
+        fs.readFile('./uploads/' + books[book], function (err, data) {
+            if (err) throw err;
+            if(data.includes(query)){
+                filteredBooks.push(books[book])
+            }
+        });
+    }
+    return filteredBooks
+}
 module.exports = router;
