@@ -22,19 +22,21 @@
       </div>
     </div>
 
-    <b-tabs  content-class="mt-3" align="center">
-
-    </b-tabs>
-
     <h2 v-if="showQuery"> List of books for given query: {{query}}</h2>
 
     <div class="list-container">
       <div class="list-entry" v-for="book in books" :key="book">
-        <img class="avatar" :src="avatar">
-        {{ book }}
+        <div class="avatar">
+          <img  :src=getImg(book._source.formaturi) @click=getTxtUri(book._source.formaturi) @hover="hover = true">
+          <span class="tooltiptext">Click to open the book in new tab !</span>
+        </div>
+          <p>Accuracy: {{ book._score }}</p>
+          <h3>{{ book._source.title.toString() }}</h3>
+          <p>{{ book._source.author.toString() }}</p>
+
+
       </div>
     </div>
-
   </div>
 </template>
 
@@ -92,6 +94,12 @@ export default {
                     //   }
                     //
                     // },
+    getImg(uriArray) {
+      return uriArray.find(uri => uri.includes("medium.jpg"))
+    },
+    getTxtUri(uriArray) {
+      window.open(uriArray.find(uri => uri.includes(".txt")))
+    },
     queryDatabase() {
       //todo  // here in the GET URL will come the this.query variable from the input form, f.ex "Java"
       if (this.showAdvancedSearch == true) this.query += "REGEX";
@@ -195,23 +203,25 @@ export default {
   box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.1);
 }
 .avatar{
-  max-width:8%;
-  max-height:8%;
+  /*max-width:8%;*/
+  /*max-height:8%;*/
 
 }
-.upload {
-  border: 1px solid #ccc;
-  display: inline-block;
-  cursor: pointer;
-  font-size: 16px;
-  align-content: center;
-  width: 50%;
-  padding: 12px 20px;
-  margin: 8px 0;
-  box-sizing: border-box;
-  transition: width 0.4s ease-in-out;
-  background-color: white;
-  background-position: 10px 10px;
-  background-repeat: no-repeat;
+
+.avatar .tooltiptext {
+  visibility: hidden;
+  width: 120px;
+  background-color: black;
+  color: #fff;
+  text-align: center;
+  padding: 5px 0;
+  border-radius: 6px;
+  position: absolute;
+  z-index: 1;
 }
+.avatar:hover .tooltiptext {
+  cursor: pointer;
+  visibility: visible;
+}
+
 </style>

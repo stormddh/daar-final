@@ -33,19 +33,25 @@ fs.readdir(uploadsFolder, (err, files) => {
 });
 
 async function setup_index () {
+    // await elasticClient.indices.delete({index: "*"})
+
     await elasticClient.indices.create({
       index: 'book_index',
       body: {
         mappings: {
           properties: {
-            first_name: { type: 'keyword' },
-            last_name: { type: 'keyword' },
-            file_name: { type: 'text' },
-            content: { type: 'text' },
+              author: { type: 'text' },
+              formaturi: { type: 'keyword' },
+              language: { type: 'text' },
+              rights: { type: 'text' },
+              subject: { type: 'text' },
+              title: { type: 'text' },
+              content: { type: 'text' },
           }
         }
       }
     }, { ignore: [400] })
+
 }
 
 setup_index().catch(console.log)
@@ -81,7 +87,6 @@ router.get('/book/:file', (req, res) => {
 });
 
 router.get('/book', (req, res) => {
-    // let filteredResults = filterResults(req.query.search)
     if (req.query.search && req.query.search.includes("REGEX")) {
         let RegExQuery = req.query.search.replace('REGEX', '');
         console.log(req.query.search)
@@ -173,30 +178,4 @@ async function import_data () {
 import_data().catch(console.log)
 
 
-
-const cleanUpDirectory = async (req) => {
-    setTimeout(function () {
-        const fs = require("fs");
-        const pathToFile = req.file.path;
-
-        fs.unlink(pathToFile, function (err) {
-            if (err) {
-                throw err;
-            }
-        })
-    }, 100);
-}
-
-function filterResults(query) {
-    let filteredBooks = []
-    for (let book in books){
-        fs.readFile('./uploads/' + books[book], function (err, data) {
-            if (err) throw err;
-            if(data.includes(query)){
-                filteredBooks.push(books[book])
-            }
-        });
-    }
-    return filteredBooks
-}
 module.exports = router;
