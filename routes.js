@@ -1,4 +1,5 @@
 require('dotenv').config();
+const axios = require('axios');
 const express = require('express');
 const fs = require('fs');
 
@@ -23,32 +24,81 @@ elasticClient.ping(
     }
 );
 
-const uploadsFolder = './uploads';
-var books = []
-fs.readdir(uploadsFolder, (err, files) => {
-    files.forEach(file => {
-        books.push(file)
-    });
-    console.log("Books list:" + books);
-});
-
 async function setup_index () {
-    await elasticClient.indices.create({
+    elasticClient.indices.delete({
+        index: '_all',
+    });
+    /*await elasticClient.indices.create({
       index: 'book_index',
       body: {
         mappings: {
           properties: {
-            first_name: { type: 'keyword' },
-            last_name: { type: 'keyword' },
-            file_name: { type: 'text' },
-            content: { type: 'text' },
+            author: { type: 'keyword' },
+            subject: { type: 'text' },
+            title: { type: 'text' },
           }
         }
       }
-    }, { ignore: [400] })
+    }, { ignore: [400] });*/
 }
-
 setup_index().catch(console.log)
+
+async function import_data () {
+    const data = fs.access('./uploads/books.json', fs.F_OK, (err) => {
+            if (err) {
+                console.log("books.json not found");
+                const data = require('./uploads/data.json');
+                Object.values(data).forEach(i => {
+                    if (i["formaturi"].length > 0) {
+                        let book_content_uri = i["formaturi"].find(uri => uri.includes(".txt"));
+                        if (book_content_uri) {
+                            const response = axios.get(book_content_uri).catch(err => {
+                                console.error("Error: ", book_content_uri);
+                            })
+                            if (response && response.data) {
+                                i["content"] = response.data;
+                            }
+                        }
+                    }
+                });
+                /*fs.writeFile('./uploads/books.json', JSON.stringify(data), err => {
+                    if (err) {
+                      console.error(err);
+                      return
+                    }
+                })*/
+            } else {
+                return require('./uploads/books.json');
+            }
+        });
+    const body = Object.values(data).flatMap(doc => [{ index: { _index: 'book_index' } }, doc])
+    // console.log(body)
+    const { body: bulkResponse } = await elasticClient.bulk({ refresh: true, body })
+
+    if (bulkResponse.errors) {
+        const erroredDocuments = []
+        // The items array has the same order of the dataset we just indexed.
+        // The presence of the `error` key indicates that the operation
+        // that we did for the document has failed.
+        bulkResponse.items.forEach((action, i) => {
+            const operation = Object.keys(action)[0]
+            if (action[operation].error) {
+                erroredDocuments.push({
+                    // If the status is 429 it means that you can retry the document,
+                    // otherwise it's very likely a mapping error, and you should
+                    // fix the document before to try it again.
+                    status: action[operation].status,
+                    error: action[operation].error,
+                    operation: body[i * 2],
+                    document: body[i * 2 + 1]
+                })
+            }
+        })
+        console.log(erroredDocuments)
+    }
+    const { body: count } = await elasticClient.count({ index: 'book_index' });
+}
+import_data().catch(console.log)
 
 router.use((req, res, next) => {
     elasticClient.index({
@@ -97,17 +147,17 @@ router.get('/book', (req, res) => {
                 }
             }
         })
-            .then(resp => {
-                return res.status(200).json({
-                    book: resp.body.hits.hits,
-                });
-            })
-            .catch(err => {
-                return res.status(500).json({
-                    msg: 'SEARCH: Error',
-                    error: err,
-                });
+        .then(resp => {
+            return res.status(200).json({
+                book: resp.body.hits.hits,
             });
+        })
+        .catch(err => {
+            return res.status(500).json({
+                msg: 'SEARCH: Error',
+                error: err,
+            });
+        });
     }
     else if (req.query.search) {
         elasticClient.search({
@@ -137,42 +187,6 @@ router.get('/book', (req, res) => {
         });
     }
 });
-
-
-
-async function import_data () {
-
-    const data = require('./uploads/data.json');
-    const body = Object.values(data).flatMap(doc => [{ index: { _index: 'book_index' } }, doc])
-    // console.log(body)
-    const { body: bulkResponse } = await elasticClient.bulk({ refresh: true, body })
-
-    if (bulkResponse.errors) {
-        const erroredDocuments = []
-        // The items array has the same order of the dataset we just indexed.
-        // The presence of the `error` key indicates that the operation
-        // that we did for the document has failed.
-        bulkResponse.items.forEach((action, i) => {
-            const operation = Object.keys(action)[0]
-            if (action[operation].error) {
-                erroredDocuments.push({
-                    // If the status is 429 it means that you can retry the document,
-                    // otherwise it's very likely a mapping error, and you should
-                    // fix the document before to try it again.
-                    status: action[operation].status,
-                    error: action[operation].error,
-                    operation: body[i * 2],
-                    document: body[i * 2 + 1]
-                })
-            }
-        })
-        console.log(erroredDocuments)
-    }
-    const { body: count } = await elasticClient.count({ index: 'book_index' });
-}
-import_data().catch(console.log)
-
-
 
 const cleanUpDirectory = async (req) => {
     setTimeout(function () {
