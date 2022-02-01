@@ -3,20 +3,42 @@
     <div>
       <h2>Search the Library database:</h2>
       <div>To browse through the books in Library, type in a searched phrase or author and a list of adequate
-        books will be shown. F.ex "Victor Hugo" or "Odyssey"
+        books will be shown. F.ex "American" or "Odyssey"
       </div>
       <input class="form" type="text" v-model="query"/>
       <input class="search-button" type="submit" value="Search!" v-on:click="queryDatabase"/>
+      <div>
+        <input type="checkbox" id="RegEx" value="Enable RegEx" v-on:click="showAdvancedSearch = !showAdvancedSearch"/>
+        <label for="RegEx">Enable RegEx Search</label>
+          <div v-if=showAdvancedSearch>
+            <div>
+              <h2>Advanced Search:</h2>
+              <div>On user input a string RegEx, the application
+                returns : either a list of text documents whose index table contains a string S matching RegEx as regular expression (refer to Lecture 1 of UE DAAR for a formal definition of regular expressions); or a list of text documents
+                containing a string S matching RegEx as regular expression
+              </div>
+            </div>
+          </div>
+      </div>
     </div>
+
     <h2 v-if="showQuery"> List of books for given query: {{query}}</h2>
 
     <div class="list-container">
       <div class="list-entry" v-for="book in books" :key="book">
-        <img class="avatar" :src="avatar">
-        {{ book }}
+
+        <div class="avatar" @hover="hover = true">
+          <img  :src=getImg(book._source.formaturi) @click=getTxtUri(book._source.formaturi)>
+          <span class="tooltiptext">Click to open the book in new tab !</span>
+        </div>
+          <p>Accuracy: {{ book._score }}</p>
+          Title: <h3>{{ book._source.title.toString() }}</h3>
+          Author: <h3>{{ book._source.author.toString() }}</h3>
+          Subject: <p>{{ book._source.subject.toString() }}</p>
+          <p>Language:  {{ book._source.language.toString() }}</p>
+
       </div>
     </div>
-
   </div>
 </template>
 
@@ -35,7 +57,8 @@ export default {
       query: '',
       books: [],
       avatar: require('./assets/default-avatar.png'),
-      showQuery: false
+      showQuery: false,
+      showAdvancedSearch: false
     }
   },
   methods: {
@@ -73,9 +96,17 @@ export default {
                     //   }
                     //
                     // },
+    getImg(uriArray) {
+      return uriArray.find(uri => uri.includes("medium.jpg"))
+    },
+    getTxtUri(uriArray) {
+      window.open(uriArray.find(uri => uri.includes(".txt")))
+    },
     queryDatabase() {
       //todo  // here in the GET URL will come the this.query variable from the input form, f.ex "Java"
-      axios.get('/api/book?search=' + this.query,
+      let elasticQuery = this.query
+      if (this.showAdvancedSearch == true) elasticQuery += "REGEX";
+      axios.get('/api/book?search=' + elasticQuery,
           {
             headers: {
               'Content-Type': 'multipart/form-data'
@@ -147,7 +178,7 @@ export default {
 }
 
 .container {
-  max-width: 700px;
+  max-width: 1500px;
   margin: 30px auto;
   overflow: auto;
   text-align: center;
@@ -157,41 +188,47 @@ export default {
   box-shadow: 0px 10px 20px rgba(0, 0, 0, 0.1);
 }
 .list-container {
-  max-width: 700px;
+  max-width: 1500px;
   margin: 30px auto;
   overflow: auto;
   text-align: center;
   padding: 60px;
   border-radius: 5px;
   box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+
 }
+
 .list-entry {
-  width: 50%;
+  width: 80%;
   margin: 10px auto;
   overflow: auto;
   text-align: center;
   padding: 15px;
   border-radius: 2px;
   box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.1);
+  column-count: 2;
+  flex-flow: column wrap;
 }
 .avatar{
-  max-width:8%;
-  max-height:8%;
+  /*max-width:8%;*/
+  /*max-height:8%;*/
 
 }
-.upload {
-  border: 1px solid #ccc;
-  display: inline-block;
-  cursor: pointer;
-  font-size: 16px;
-  align-content: center;
-  width: 50%;
-  padding: 12px 20px;
-  margin: 8px 0;
-  box-sizing: border-box;
-  transition: width 0.4s ease-in-out;
-  background-color: white;
-  background-position: 10px 10px;
-  background-repeat: no-repeat;
+
+.avatar .tooltiptext {
+  visibility: hidden;
+  width: 120px;
+  background-color: black;
+  color: #fff;
+  text-align: center;
+  padding: 5px 0;
+  border-radius: 6px;
+  position: absolute;
+  z-index: 1;
 }
+.avatar:hover .tooltiptext {
+  cursor: pointer;
+  visibility: visible;
+}
+
 </style>
