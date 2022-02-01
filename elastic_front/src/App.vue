@@ -3,7 +3,7 @@
     <div>
       <h2>Search the Library database:</h2>
       <div>To browse through the books in Library, type in a searched phrase or author and a list of adequate
-        books will be shown. F.ex "Victor Hugo" or "Odyssey"
+        books will be shown. F.ex "American" or "Odyssey"
       </div>
       <input class="form" type="text" v-model="query"/>
       <input class="search-button" type="submit" value="Search!" v-on:click="queryDatabase"/>
@@ -26,14 +26,16 @@
 
     <div class="list-container">
       <div class="list-entry" v-for="book in books" :key="book">
-        <div class="avatar">
-          <img  :src=getImg(book._source.formaturi) @click=getTxtUri(book._source.formaturi) @hover="hover = true">
+
+        <div class="avatar" @hover="hover = true">
+          <img  :src=getImg(book._source.formaturi) @click=getTxtUri(book._source.formaturi)>
           <span class="tooltiptext">Click to open the book in new tab !</span>
         </div>
           <p>Accuracy: {{ book._score }}</p>
-          <h3>{{ book._source.title.toString() }}</h3>
-          <p>{{ book._source.author.toString() }}</p>
-
+          Title: <h3>{{ book._source.title.toString() }}</h3>
+          Author: <h3>{{ book._source.author.toString() }}</h3>
+          Subject: <p>{{ book._source.subject.toString() }}</p>
+          <p>Language:  {{ book._source.language.toString() }}</p>
 
       </div>
     </div>
@@ -102,8 +104,9 @@ export default {
     },
     queryDatabase() {
       //todo  // here in the GET URL will come the this.query variable from the input form, f.ex "Java"
-      if (this.showAdvancedSearch == true) this.query += "REGEX";
-      axios.get('/api/book?search=' + this.query,
+      let elasticQuery = this.query
+      if (this.showAdvancedSearch == true) elasticQuery += "REGEX";
+      axios.get('/api/book?search=' + elasticQuery,
           {
             headers: {
               'Content-Type': 'multipart/form-data'
@@ -175,7 +178,7 @@ export default {
 }
 
 .container {
-  max-width: 700px;
+  max-width: 1500px;
   margin: 30px auto;
   overflow: auto;
   text-align: center;
@@ -185,22 +188,26 @@ export default {
   box-shadow: 0px 10px 20px rgba(0, 0, 0, 0.1);
 }
 .list-container {
-  max-width: 700px;
+  max-width: 1500px;
   margin: 30px auto;
   overflow: auto;
   text-align: center;
   padding: 60px;
   border-radius: 5px;
   box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+
 }
+
 .list-entry {
-  width: 50%;
+  width: 80%;
   margin: 10px auto;
   overflow: auto;
   text-align: center;
   padding: 15px;
   border-radius: 2px;
   box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.1);
+  column-count: 2;
+  flex-flow: column wrap;
 }
 .avatar{
   /*max-width:8%;*/

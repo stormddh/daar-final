@@ -25,7 +25,7 @@ elasticClient.ping(
 );
 
 async function setup_index () {
-    await elasticClient.indices.delete({index: "*"});
+    // await elasticClient.indices.delete({index: "*"});
     await elasticClient.indices.create({
       index: 'book_index',
       body: {
@@ -47,33 +47,33 @@ async function setup_index () {
 setup_index().catch(console.log)
 
 async function import_data () {
-    const experiment = fs.access('./uploads/books.json', fs.F_OK, (err) => {
-            if (err) {
-                console.log("books.json not found");
-                const data = require('./uploads/data.json');
-                Object.values(data).forEach(i => {
-                    if (i["formaturi"].length > 0) {
-                        let book_content_uri = i["formaturi"].find(uri => uri.includes(".txt"));
-                        if (book_content_uri) {
-                            const response = axios.get(book_content_uri).catch(err => {
-                                console.error("Error: ", book_content_uri);
-                            })
-                            if (response && response.data) {
-                                i["content"] = response.data;
-                            }
-                        }
-                    }
-                });
-                /*fs.writeFile('./uploads/books.json', JSON.stringify(data), err => {
-                    if (err) {
-                      console.error(err);
-                      return
-                    }
-                })*/
-            } else {
-                return require('./uploads/books.json');
-            }
-        });
+    // const experiment = fs.access('./uploads/books.json', fs.F_OK, (err) => {
+    //         if (err) {
+    //             console.log("books.json not found");
+    //             const data = require('./uploads/data.json');
+    //             Object.values(data).forEach(i => {
+    //                 if (i["formaturi"].length > 0) {
+    //                     let book_content_uri = i["formaturi"].find(uri => uri.includes(".txt"));
+    //                     if (book_content_uri) {
+    //                         const response = axios.get(book_content_uri).catch(err => {
+    //                             console.error("Error: ", book_content_uri);
+    //                         })
+    //                         if (response && response.data) {
+    //                             i["content"] = response.data;
+    //                         }
+    //                     }
+    //                 }
+    //             });
+    //             /*fs.writeFile('./uploads/books.json', JSON.stringify(data), err => {
+    //                 if (err) {
+    //                   console.error(err);
+    //                   return
+    //                 }
+    //             })*/
+    //         } else {
+    //             return require('./uploads/books.json');
+    //         }
+    //     });
     const data = require('./uploads/data.json');
     const body = Object.values(data).flatMap(doc => [{ index: { _index: 'book_index' } }, doc])
     // console.log(body)
@@ -145,17 +145,25 @@ router.get('/book', (req, res) => {
             body: {
                 query: {
                     regexp: {
-                        value: RegExQuery,
+                        _source: {
+                            value: RegExQuery,
+                            flags: "ALL",
+                            case_insensitive: true,
+                            rewrite: "constant_score"
+                        }
                     }
                 }
             }
         })
         .then(resp => {
+            console.log(resp.body.hits)
             return res.status(200).json({
                 book: resp.body.hits.hits,
             });
         })
         .catch(err => {
+            console.log(err.toString())
+
             return res.status(500).json({
                 msg: 'SEARCH: Error',
                 error: err,
