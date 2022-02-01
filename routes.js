@@ -25,26 +25,29 @@ elasticClient.ping(
 );
 
 async function setup_index () {
-    elasticClient.indices.delete({
-        index: '_all',
-    });
-    /*await elasticClient.indices.create({
+    await elasticClient.indices.delete({index: "*"});
+    await elasticClient.indices.create({
       index: 'book_index',
       body: {
         mappings: {
           properties: {
-            author: { type: 'keyword' },
-            subject: { type: 'text' },
-            title: { type: 'text' },
+              author: { type: 'text' },
+              formaturi: { type: 'keyword' },
+              language: { type: 'text' },
+              rights: { type: 'text' },
+              subject: { type: 'text' },
+              title: { type: 'text' },
+              content: { type: 'text' },
           }
         }
       }
-    }, { ignore: [400] });*/
+    }, { ignore: [400] })
+
 }
 setup_index().catch(console.log)
 
 async function import_data () {
-    const data = fs.access('./uploads/books.json', fs.F_OK, (err) => {
+    const experiment = fs.access('./uploads/books.json', fs.F_OK, (err) => {
             if (err) {
                 console.log("books.json not found");
                 const data = require('./uploads/data.json');
@@ -71,6 +74,7 @@ async function import_data () {
                 return require('./uploads/books.json');
             }
         });
+    const data = require('./uploads/data.json');
     const body = Object.values(data).flatMap(doc => [{ index: { _index: 'book_index' } }, doc])
     // console.log(body)
     const { body: bulkResponse } = await elasticClient.bulk({ refresh: true, body })
@@ -131,7 +135,6 @@ router.get('/book/:file', (req, res) => {
 });
 
 router.get('/book', (req, res) => {
-    // let filteredResults = filterResults(req.query.search)
     if (req.query.search && req.query.search.includes("REGEX")) {
         let RegExQuery = req.query.search.replace('REGEX', '');
         console.log(req.query.search)
@@ -188,29 +191,4 @@ router.get('/book', (req, res) => {
     }
 });
 
-const cleanUpDirectory = async (req) => {
-    setTimeout(function () {
-        const fs = require("fs");
-        const pathToFile = req.file.path;
-
-        fs.unlink(pathToFile, function (err) {
-            if (err) {
-                throw err;
-            }
-        })
-    }, 100);
-}
-
-function filterResults(query) {
-    let filteredBooks = []
-    for (let book in books){
-        fs.readFile('./uploads/' + books[book], function (err, data) {
-            if (err) throw err;
-            if(data.includes(query)){
-                filteredBooks.push(books[book])
-            }
-        });
-    }
-    return filteredBooks
-}
 module.exports = router;
