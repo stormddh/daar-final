@@ -1,38 +1,8 @@
 require('dotenv').config();
 const express = require('express');
-const multer = require('multer');
 const fs = require('fs');
-const winston = require('winston');
-
 
 const router = express.Router();
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, './uploads');
-    },
-    filename: function (req, file, cb) {
-        cb(null, Date.now() + "--" + file.originalname);
-    }
-});
-const upload = multer({storage: storage});
-
-const { format } = require('logform');
-const { logstash, combine, timestamp } = format;
-
-const logger = winston.createLogger({
-    level: 'info',
-    format: winston.format.json(),
-    defaultMeta: { service: 'user-service' },
-    transports: [
-        new winston.transports.File({
-            format: combine(timestamp(), logstash()),
-            filename: './logs/combined.log'
-        }),
-        new winston.transports.Console({
-            format: winston.format.cli(),
-        })
-    ],
-});
 
 const {Client} = require('@elastic/elasticsearch');
 const elasticClient = new Client({
@@ -107,7 +77,6 @@ router.get('/book/:file', (req, res) => {
         fs.createReadStream(book_path).pipe(res);
     } else {
         res.status(500);
-        elk_logging('File not found');
         res.send('File not found');
     }
 });
@@ -156,11 +125,6 @@ const cleanUpDirectory = async (req) => {
     }, 100);
 }
 
-const elk_logging = (message) => {
-    if (process.env.NODE_ENV == "development") {
-        console.log(message);
-    }
-}
 function filterResults(query) {
     let filteredBooks = []
     for (let book in books){
