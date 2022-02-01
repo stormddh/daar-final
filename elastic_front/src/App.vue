@@ -7,7 +7,25 @@
       </div>
       <input class="form" type="text" v-model="query"/>
       <input class="search-button" type="submit" value="Search!" v-on:click="queryDatabase"/>
+      <div>
+        <input type="checkbox" id="RegEx" value="Enable RegEx" v-on:click="showAdvancedSearch = !showAdvancedSearch"/>
+        <label for="RegEx">Enable RegEx Search</label>
+          <div v-if=showAdvancedSearch>
+            <div>
+              <h2>Advanced Search:</h2>
+              <div>On user input a string RegEx, the application
+                returns : either a list of text documents whose index table contains a string S matching RegEx as regular expression (refer to Lecture 1 of UE DAAR for a formal definition of regular expressions); or a list of text documents
+                containing a string S matching RegEx as regular expression
+              </div>
+            </div>
+          </div>
+      </div>
     </div>
+
+    <b-tabs  content-class="mt-3" align="center">
+
+    </b-tabs>
+
     <h2 v-if="showQuery"> List of books for given query: {{query}}</h2>
 
     <div class="list-container">
@@ -35,7 +53,8 @@ export default {
       query: '',
       books: [],
       avatar: require('./assets/default-avatar.png'),
-      showQuery: false
+      showQuery: false,
+      showAdvancedSearch: false
     }
   },
   methods: {
@@ -75,6 +94,7 @@ export default {
                     // },
     queryDatabase() {
       //todo  // here in the GET URL will come the this.query variable from the input form, f.ex "Java"
+      if (this.showAdvancedSearch == true) this.query += "REGEX";
       axios.get('/api/book?search=' + this.query,
           {
             headers: {
