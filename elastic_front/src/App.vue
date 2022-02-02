@@ -28,16 +28,20 @@
       <div class="list-entry" v-for="book in books" :key="book">
 
         <div class="avatar" @hover="hover = true">
-          <img  :src=getImg(book._source.formaturi) @click=getTxtUri(book._source.formaturi)>
+          <img  :src=getImg(book._source.formaturi) @click=getTxtUri(book._source.formaturi)
+          style=" padding-top: 30px; margin-left:auto; margin-right:auto; display:block;">
           <span class="tooltiptext">Click to open the book in new tab !</span>
         </div>
-          <div>Accuracy: {{ book._score }}</div>
+        <div style="display: inline-block;">
+          <h3>Accuracy: {{ book._score }}</h3>
           Title: <h3>{{ book._source.title.toString() }}</h3>
           Author: <h3>{{ book._source.author.toString() }}</h3>
           Subject: <div>{{ book._source.subject.toString() }}</div>
           <p>Language:</p>
           <img :alt= book._source.language.toString()
-              :src=getFlagUrl(book._source.language) style="max-width: 10%; height: auto;"/>
+               :src=getFlagUrl(book._source.language)
+               style="height:30px; width:auto; max-width:500px;"/>
+        </div>
       </div>
     </div>
   </div>
