@@ -1,10 +1,10 @@
 const {getJacardScore} = require("./recommender");
 const {extractWordSet} = require("./recommender");
+const fs = require('fs');
 
 // change with full doc list/api call/ db call whatever we'll have
-doc_paths = ['../uploads/Winnie-the-Pooh by A. A. Milne.txt',
-    '../uploads/A Doll\'s House by Henrik Ibsen.txt',
-    '../uploads/Persuasion by Jane Austen.txt']
+let doc_paths = fs.readdirSync('../uploads/')
+doc_paths = doc_paths.map(p => '../uploads/' + p)
 
 doc_wordset_mapping = {}
 
