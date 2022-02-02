@@ -25,7 +25,7 @@ elasticClient.ping(
 );
 
 async function setup_index () {
-    // await elasticClient.indices.delete({index: "*"});
+    await elasticClient.indices.delete({index: "*"});
     await elasticClient.indices.create({
       index: 'book_index',
       body: {
@@ -46,7 +46,32 @@ async function setup_index () {
 }
 setup_index().catch(console.log)
 
+async function read_books () {
+    // PROGRESS IN WORK
+    const data_folder = './data/';
+    var import_books = fs.readdir(data_folder, (err, filenames) => {
+        if (err) {
+        onError(err);
+        return;
+        }
+        var book_list = [];
+        filenames.forEach(function(filename) {
+            if (filename.endsWith('.json')) {
+                const data = require(data_folder + filename);
+                book_list.push(data);
+            }
+        });
+        console.log(book_list.length);
+        return book_list;
+    });
+    console.log("RADE: " + import_books.length);
+    return import_books;
+}
+
 async function import_data () {
+    const book_list = await read_books();
+    console.log(book_list);
+    console.log("Importing: " + book_list.length);
     // const experiment = fs.access('./data/books.json', fs.F_OK, (err) => {
     //         if (err) {
     //             console.log("books.json not found");
@@ -54,7 +79,7 @@ async function import_data () {
     //             Object.values(data).forEach(i => {
     //                 if (i["formaturi"].length > 0) {
     //                     let book_content_uri = i["formaturi"].find(uri => uri.includes(".txt"));
-    //                     if (book_content_uri) {
+    //                     (book_content_uri) {
     //                         const response = axios.get(book_content_uri).catch(err => {
     //                             console.error("Error: ", book_content_uri);
     //                         })
@@ -74,9 +99,7 @@ async function import_data () {
     //             return require('./data/books.json');
     //         }
     //     });
-    const data = require('./data/data.json');
-    const body = Object.values(data).flatMap(doc => [{ index: { _index: 'book_index' } }, doc])
-    // console.log(body)
+    const body = book_list.flatMap(doc => [{ index: { _index: 'book_index' } }, doc])
     const { body: bulkResponse } = await elasticClient.bulk({ refresh: true, body })
 
     if (bulkResponse.errors) {
