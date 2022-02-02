@@ -2,9 +2,9 @@
   <div class="container">
     <div>
       <h2>Search the Library database:</h2>
-      <div>To browse through the books in Library, type in a searched phrase or author and a list of adequate
-        books will be shown. F.ex "American" or "Odyssey"
-      </div>
+      <p>To browse through the books in Library, type in a searched phrase or author and a list of adequate
+        books will be shown. <br> F.ex "American", "La" (to get results in different languages), or "Odyssey"
+      </p>
       <input class="form" type="text" v-model="query"/>
       <input class="search-button" type="submit" value="Search!" v-on:click="queryDatabase"/>
       <div>
@@ -13,9 +13,9 @@
           <div v-if=showAdvancedSearch>
             <div>
               <h2>Advanced Search:</h2>
-              <div>On user input a string RegEx, the application
-                returns : either a list of text documents whose index table contains a string S matching RegEx as regular expression (refer to Lecture 1 of UE DAAR for a formal definition of regular expressions); or a list of text documents
-                containing a string S matching RegEx as regular expression
+              <div>EXAMPLE REGEX QUERIES (for dev purp):
+                <p>l.*y</p>
+                <p>lov.*</p>
               </div>
             </div>
           </div>
@@ -31,12 +31,13 @@
           <img  :src=getImg(book._source.formaturi) @click=getTxtUri(book._source.formaturi)>
           <span class="tooltiptext">Click to open the book in new tab !</span>
         </div>
-          <p>Accuracy: {{ book._score }}</p>
+          <div>Accuracy: {{ book._score }}</div>
           Title: <h3>{{ book._source.title.toString() }}</h3>
           Author: <h3>{{ book._source.author.toString() }}</h3>
-          Subject: <p>{{ book._source.subject.toString() }}</p>
-          <p>Language:  {{ book._source.language.toString() }}</p>
-
+          Subject: <div>{{ book._source.subject.toString() }}</div>
+          <p>Language:</p>
+          <img :alt= book._source.language.toString()
+              :src=getFlagUrl(book._source.language) style="max-width: 10%; height: auto;"/>
       </div>
     </div>
   </div>
@@ -101,6 +102,13 @@ export default {
     },
     getTxtUri(uriArray) {
       window.open(uriArray.find(uri => uri.includes(".txt")))
+    },
+    getFlagUrl(language){
+      let flagUrl
+      if (language.toString() === "en"){
+        flagUrl = "http://purecatamphetamine.github.io/country-flag-icons/3x2/GB.svg"
+      } else flagUrl = "http://purecatamphetamine.github.io/country-flag-icons/3x2/" + language.toString().toUpperCase() + ".svg"
+      return flagUrl
     },
     queryDatabase() {
       //todo  // here in the GET URL will come the this.query variable from the input form, f.ex "Java"
