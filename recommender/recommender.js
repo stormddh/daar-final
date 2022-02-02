@@ -9,8 +9,15 @@ function extractWordSet(path){
 }
 
 function extractRelevantText(rawText){
-    const BEGIN = new RegExp('\\*\\*\\* START OF .* PROJECT.*\\*\\*\\*');
-    const END = new RegExp('\\*\\*\\* END OF .* PROJECT.*\\*\\*\\*');
+    const BEGIN = new RegExp('[\\*\\*\\*]*\s*START OF .* PROJECT.*[\\*\\*\\*]*');
+    const END = new RegExp('[\\*\\*\\*]*\s*END OF .* PROJECT.*[\\*\\*\\*]*');
+    if(rawText.split(BEGIN).length < 2){
+        const BEGIN2 = new RegExp('\\*END\\*THE SMALL PRINT!')
+        if(rawText.split(BEGIN2).length < 2){
+            return ''
+        }
+        return rawText.split(BEGIN2)[1]
+    }
     return rawText.split(BEGIN)[1].split(END)[0]
 }
 
@@ -44,12 +51,6 @@ function intersection(a, b){
 function getJacardScore(a, b){
     return intersection(a, b).size / union(a, b).size
 }
-
-a = extractWordSet('../uploads/Winnie-the-Pooh by A. A. Milne.txt')
-b = extractWordSet('../uploads/A Doll\'s House by Henrik Ibsen.txt')
-
-// getJacardScore(a, b)
-// console.log(doc)
 
 module.exports = {extractWordSet, getJacardScore}
 
