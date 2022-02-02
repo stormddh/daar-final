@@ -9,6 +9,9 @@ function extractWordSet(path){
 }
 
 function extractRelevantText(rawText){
+    if(rawText[0] == '{'){ // proxy for JSON string
+        rawText = JSON.parse(rawText)['content']
+    }
     const BEGIN = new RegExp('[\\*\\*\\*]*\s*START OF .* PROJECT.*[\\*\\*\\*]*');
     const END = new RegExp('[\\*\\*\\*]*\s*END OF .* PROJECT.*[\\*\\*\\*]*');
     if(rawText.split(BEGIN).length < 2){

@@ -3,21 +3,22 @@ const {extractWordSet} = require("./recommender");
 const fs = require('fs');
 
 // change with full doc list/api call/ db call whatever we'll have
-let doc_paths = fs.readdirSync('../uploads/')
-doc_paths = doc_paths.map(p => '../uploads/' + p)
+let doc_paths = fs.readdirSync('../data/')
+doc_paths = doc_paths.map(p => '../data/' + p)
 
 doc_wordset_mapping = {}
 
 for(let i = 0; i < doc_paths.length; i++){
-    doc_wordset_mapping[i] = extractWordSet(doc_paths[i])
+    const docId = doc_paths[i].split('.json')[0].split(/\\*\//)[doc_paths[i].split('.json')[0].split(/\\*\//).length - 1]
+    doc_wordset_mapping[docId] = extractWordSet(doc_paths[i])
 }
 
-GEOMETRIC_GRAPH_THRESHOLD = 0.5 // tweak this if needd
+GEOMETRIC_GRAPH_THRESHOLD = 0.25 // tweak this if needd
 
 edge_list = []
 
-for(let a = 0; a < doc_paths.length; a++){
-    for(let b = a; b < doc_paths.length; b++){ // jacardScore(a,b) == jacardScore(b,a) so skip already computed
+for(let a in doc_wordset_mapping){
+    for(let b in doc_wordset_mapping){ // jacardScore(a,b) == jacardScore(b,a) so skip already computed
         console.log([a,b])
         if(a === b){
             continue;

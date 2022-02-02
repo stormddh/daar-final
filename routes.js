@@ -47,10 +47,10 @@ async function setup_index () {
 setup_index().catch(console.log)
 
 async function import_data () {
-    // const experiment = fs.access('./uploads/books.json', fs.F_OK, (err) => {
+    // const experiment = fs.access('./data/books.json', fs.F_OK, (err) => {
     //         if (err) {
     //             console.log("books.json not found");
-    //             const data = require('./uploads/data.json');
+    //             const data = require('./data/data.json');
     //             Object.values(data).forEach(i => {
     //                 if (i["formaturi"].length > 0) {
     //                     let book_content_uri = i["formaturi"].find(uri => uri.includes(".txt"));
@@ -64,17 +64,17 @@ async function import_data () {
     //                     }
     //                 }
     //             });
-    //             /*fs.writeFile('./uploads/books.json', JSON.stringify(data), err => {
+    //             /*fs.writeFile('./data/books.json', JSON.stringify(data), err => {
     //                 if (err) {
     //                   console.error(err);
     //                   return
     //                 }
     //             })*/
     //         } else {
-    //             return require('./uploads/books.json');
+    //             return require('./data/books.json');
     //         }
     //     });
-    const data = require('./uploads/data.json');
+    const data = require('./data/data.json');
     const body = Object.values(data).flatMap(doc => [{ index: { _index: 'book_index' } }, doc])
     // console.log(body)
     const { body: bulkResponse } = await elasticClient.bulk({ refresh: true, body })
@@ -123,7 +123,7 @@ router.use((req, res, next) => {
 
 router.get('/book/:file', (req, res) => {
     const file_name = req.params.file
-    const book_path = "uploads/" + file_name
+    const book_path = "data/" + file_name
 
     if (fs.existsSync(book_path)) {
         res.contentType("application/pdf");
