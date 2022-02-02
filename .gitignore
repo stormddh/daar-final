@@ -1,5 +1,6 @@
 node_modules/
 logs/
 **/.idea/*
-**/uploads/*.txt
+**/data/*.txt
+**/data/*.json
 .npm
