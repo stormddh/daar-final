@@ -2,9 +2,9 @@
   <div class="container">
     <div>
       <h2>Search the Library database:</h2>
-      <div>To browse through the books in Library, type in a searched phrase or author and a list of adequate
-        books will be shown. F.ex "American" or "Odyssey"
-      </div>
+      <p>To browse through the books in Library, type in a searched phrase or author and a list of adequate
+        books will be shown. <br> F.ex "American", "La" (to get results in different languages), or "Odyssey"
+      </p>
       <input class="form" type="text" v-model="query"/>
       <input class="search-button" type="submit" value="Search!" v-on:click="queryDatabase"/>
       <div>
@@ -13,9 +13,9 @@
           <div v-if=showAdvancedSearch>
             <div>
               <h2>Advanced Search:</h2>
-              <div>On user input a string RegEx, the application
-                returns : either a list of text documents whose index table contains a string S matching RegEx as regular expression (refer to Lecture 1 of UE DAAR for a formal definition of regular expressions); or a list of text documents
-                containing a string S matching RegEx as regular expression
+              <div>EXAMPLE REGEX QUERIES (for dev purp):
+                <p>l.*y</p>
+                <p>lov.*</p>
               </div>
             </div>
           </div>
@@ -28,15 +28,20 @@
       <div class="list-entry" v-for="book in books" :key="book">
 
         <div class="avatar" @hover="hover = true">
-          <img  :src=getImg(book._source.formaturi) @click=getTxtUri(book._source.formaturi)>
+          <img  :src=getImg(book._source.formats) @click=getTxtUri(book._source.formats)
+          style=" padding-top: 30px; margin-left:auto; margin-right:auto; display:block;">
           <span class="tooltiptext">Click to open the book in new tab !</span>
         </div>
-          <p>Accuracy: {{ book._score }}</p>
-          Title: <h3>{{ book._source.title.toString() }}</h3>
-          Author: <h3>{{ book._source.author.toString() }}</h3>
-          Subject: <p>{{ book._source.subject.toString() }}</p>
-          <p>Language:  {{ book._source.language.toString() }}</p>
-
+        <div style="display: inline-block;">
+          <h3>Accuracy: {{ book._score }}</h3>
+          Title: <h3>{{ book._source.title}}</h3>
+          Author: <h3>{{ book._source.authors.flatMap(a => a['name']).join(' ') }}</h3>
+          Subject: <div>{{ book._source.subjects.join(' ') }}</div>
+          <p>Language:</p>
+          <img :alt= book._source.language
+               :src=getFlagUrl(book._source.languages)
+               style="height:30px; width:auto; max-width:500px;"/>
+        </div>
       </div>
     </div>
   </div>
@@ -62,45 +67,21 @@ export default {
     }
   },
   methods: {
+    getImg(uriObject) {
 
-                    // async handleFileUpload() {
-                    //   if (this.$refs.file.files[0].size / 1024 / 1024 < 5) {
-                    //     this.myFile = this.$refs.file.files[0];
-                    //   } else {
-                    //     alert('Maximum file size is 5 MB! Your file size is ' + (Math.round(this.$refs.file.files[0].size / 1024 / 1024 * 100) / 100) + "MB");
-                    //     location.reload();
-                    //   }
-                    // },
-                    // async submitApplication() {
-                    //   if (this.myFile) {
-                    //     var data = new FormData();
-                    //     data.append('firstName', this.firstName);
-                    //     data.append('lastName', this.lastName);
-                    //     data.append('cvFile', this.myFile);
-                    //
-                    //     var config = {
-                    //       method: 'post',
-                    //       url: '/api/cv/',
-                    //       data: data
-                    //     };
-                    //
-                    //     axios(config)
-                    //         .then(function (response) {
-                    //           console.log(JSON.stringify(response.data));
-                    //         })
-                    //         .catch(function (error) {
-                    //           console.log(error);
-                    //         });
-                    //   } else {
-                    //     window.alert("Please select a file to upload !");
-                    //   }
-                    //
-                    // },
-    getImg(uriArray) {
-      return uriArray.find(uri => uri.includes("medium.jpg"))
+      const k = Object.keys(uriObject).find(uri => uri.includes("image"))
+      console.log(uriObject[k])
+      return uriObject[k]
     },
     getTxtUri(uriArray) {
       window.open(uriArray.find(uri => uri.includes(".txt")))
+    },
+    getFlagUrl(languages){
+      let flagUrl
+      if (languages[0].toString() === "en"){
+        flagUrl = "http://purecatamphetamine.github.io/country-flag-icons/3x2/GB.svg"
+      } else flagUrl = "http://purecatamphetamine.github.io/country-flag-icons/3x2/" + languages[0].toString().toUpperCase() + ".svg"
+      return flagUrl
     },
     queryDatabase() {
       //todo  // here in the GET URL will come the this.query variable from the input form, f.ex "Java"

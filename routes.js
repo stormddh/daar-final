@@ -2,107 +2,99 @@ require('dotenv').config();
 const axios = require('axios');
 const express = require('express');
 const fs = require('fs');
+const {tokenise, extractRelevantText, removeStopWords} = require("./recommender/_recommender");
 
 const router = express.Router();
 
 const {Client} = require('@elastic/elasticsearch');
+let import_books = [];
 const elasticClient = new Client({
     node: process.env.ES,
 });
 
-elasticClient.ping(
-    {
-        requestTimeout: 30000,
-    },
+elasticClient.ping({},
+    {requestTimeout: '30000',},
     function (error) {
         if (error) {
             console.error('Elasticsearch cluster is down!');
             console.error(error);
         } else {
-            console.log('Everything is okay.');
+            console.log('Elasticsearch cluster is up');
         }
     }
 );
+async function fetchIndexObject(indexName) {
+    const result = await elasticClient.indices.get(
+        {index: indexName},
+        {})
+    return result
+}
 
 async function setup_index () {
-    // await elasticClient.indices.delete({index: "*"});
-    await elasticClient.indices.create({
-      index: 'book_index',
-      body: {
-        mappings: {
-          properties: {
-              author: { type: 'text' },
-              formaturi: { type: 'keyword' },
-              language: { type: 'text' },
-              rights: { type: 'text' },
-              subject: { type: 'text' },
-              title: { type: 'text' },
-              content: { type: 'text' },
-          }
-        }
-      }
-    }, { ignore: [400] })
-
-}
-setup_index().catch(console.log)
-
-async function import_data () {
-    // const experiment = fs.access('./uploads/books.json', fs.F_OK, (err) => {
-    //         if (err) {
-    //             console.log("books.json not found");
-    //             const data = require('./uploads/data.json');
-    //             Object.values(data).forEach(i => {
-    //                 if (i["formaturi"].length > 0) {
-    //                     let book_content_uri = i["formaturi"].find(uri => uri.includes(".txt"));
-    //                     if (book_content_uri) {
-    //                         const response = axios.get(book_content_uri).catch(err => {
-    //                             console.error("Error: ", book_content_uri);
-    //                         })
-    //                         if (response && response.data) {
-    //                             i["content"] = response.data;
-    //                         }
-    //                     }
-    //                 }
-    //             });
-    //             /*fs.writeFile('./uploads/books.json', JSON.stringify(data), err => {
-    //                 if (err) {
-    //                   console.error(err);
-    //                   return
-    //                 }
-    //             })*/
-    //         } else {
-    //             return require('./uploads/books.json');
-    //         }
-    //     });
-    const data = require('./uploads/data.json');
-    const body = Object.values(data).flatMap(doc => [{ index: { _index: 'book_index' } }, doc])
-    // console.log(body)
-    const { body: bulkResponse } = await elasticClient.bulk({ refresh: true, body })
-
-    if (bulkResponse.errors) {
-        const erroredDocuments = []
-        // The items array has the same order of the dataset we just indexed.
-        // The presence of the `error` key indicates that the operation
-        // that we did for the document has failed.
-        bulkResponse.items.forEach((action, i) => {
-            const operation = Object.keys(action)[0]
-            if (action[operation].error) {
-                erroredDocuments.push({
-                    // If the status is 429 it means that you can retry the document,
-                    // otherwise it's very likely a mapping error, and you should
-                    // fix the document before to try it again.
-                    status: action[operation].status,
-                    error: action[operation].error,
-                    operation: body[i * 2],
-                    document: body[i * 2 + 1]
-                })
+    await elasticClient.indices.delete({index: "*", ignore_unavailable: true});
+    const doesExistAlready = await elasticClient.indices.exists({index: 'book_index'});
+    if(! doesExistAlready.body){
+        await elasticClient.indices.create({
+            index: 'book_index',
+            body: {
+                mappings: {
+                    properties: {
+                        title: { type: 'text' },
+                        content: { type: 'text' },
+                        authors: { type: 'object' },
+                        formats: { type: 'object' },
+                        languages : {type: 'text'},
+                        subjects: {type: 'text'},
+                    }
+                }
             }
-        })
-        console.log(erroredDocuments)
+        }, { ignore: [400] })
+        await read_books()
     }
-    const { body: count } = await elasticClient.count({ index: 'book_index' });
+    return true
 }
-import_data().catch(console.log)
+
+async function read_books() {
+
+    const data_folder = './data/';
+
+    const thingsToIndex = fs.readdirSync(data_folder)
+        .filter(f => f.endsWith('.json'))
+        .map(f => data_folder + f)
+        .map(path => fs.readFileSync(path, 'utf8'))
+        .map(rawFile => JSON.parse(rawFile))
+        .map(json => (({title, content, formats, authors, languages, subjects}) => ({title, content, formats, authors, languages, subjects}))(json))
+    let i = 0;
+    const batchSize = 5;
+    while(i < thingsToIndex.length){
+        let bulkBody = thingsToIndex
+            .slice(i, i+batchSize)
+            .reduce((old, current) => [...old, { index: { _index: 'book_index' } }, current], []);
+        try {
+            let apiResponse = await elasticClient.bulk({
+                index: 'book_index',
+                body: bulkBody,
+                timeout: '30s',
+            });
+            // console.log(apiResponse)
+        } catch (e){
+            console.log("Bulk api problem")
+            console.log(e);
+        }
+        i += batchSize
+        if(i % 50 == 0){
+            console.log("indexed " + i + ' documents')
+        }
+    }
+
+}
+
+async function setupall(){
+    const ok = await setup_index().catch(console.log)
+}
+
+
+setupall()
 
 router.use((req, res, next) => {
     elasticClient.index({
@@ -123,7 +115,7 @@ router.use((req, res, next) => {
 
 router.get('/book/:file', (req, res) => {
     const file_name = req.params.file
-    const book_path = "uploads/" + file_name
+    const book_path = "data/" + file_name
 
     if (fs.existsSync(book_path)) {
         res.contentType("application/pdf");
@@ -145,7 +137,7 @@ router.get('/book', (req, res) => {
             body: {
                 query: {
                     regexp: {
-                        _source: {
+                        title: {
                             value: RegExQuery,
                             flags: "ALL",
                             case_insensitive: true,
@@ -175,8 +167,9 @@ router.get('/book', (req, res) => {
             index: 'book_index',
             body: {
                 query: {
-                    match: {
-                        title: req.query.search,
+                    multi_match: {
+                        query: req.query.search,
+                        fields: ['title', 'content']
                     }
                 }
             }
