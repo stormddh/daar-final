@@ -31,7 +31,7 @@ async function fetchIndexObject(indexName) {
 }
 
 async function setup_index () {
-    // await elasticClient.indices.delete({index: "*", ignore_unavailable: true});
+    await elasticClient.indices.delete({index: "*", ignore_unavailable: true});
     const doesExistAlready = await elasticClient.indices.exists({index: 'book_index'});
     if(! doesExistAlready.body){
         await elasticClient.indices.create({
@@ -41,6 +41,10 @@ async function setup_index () {
                     properties: {
                         title: { type: 'text' },
                         content: { type: 'text' },
+                        authors: { type: 'object' },
+                        formats: { type: 'object' },
+                        languages : {type: 'text'},
+                        subjects: {type: 'text'},
                     }
                 }
             }
@@ -59,12 +63,7 @@ async function read_books() {
         .map(f => data_folder + f)
         .map(path => fs.readFileSync(path, 'utf8'))
         .map(rawFile => JSON.parse(rawFile))
-        .map(json => {
-            // let doc = extractRelevantText(json['content']);
-            // doc = tokenise(doc);
-            // doc = removeStopWords(doc);
-            return {title: json['title'], content: json['content']}
-        })
+        .map(json => (({title, content, formats, authors, languages, subjects}) => ({title, content, formats, authors, languages, subjects}))(json))
     let i = 0;
     const batchSize = 5;
     while(i < thingsToIndex.length){
@@ -77,6 +76,7 @@ async function read_books() {
                 body: bulkBody,
                 timeout: '30s',
             });
+            // console.log(apiResponse)
         } catch (e){
             console.log("Bulk api problem")
             console.log(e);
