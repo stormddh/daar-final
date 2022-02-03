@@ -55,7 +55,7 @@ function getJacardScore(a, b){
     return intersection(a, b).size / union(a, b).size
 }
 
-module.exports = {extractWordSet, getJacardScore}
+module.exports = {extractWordSet, getJacardScore, extractWordSet, extractRelevantText, tokenise, removeStopWords}
 
 
 
