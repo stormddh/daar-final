@@ -11,10 +11,10 @@
         <div class="checkboxes">
           <input type="checkbox" id="RegEx" value="Enable RegEx" v-on:click="showAdvancedSearch = !showAdvancedSearch"/>
           <label for="RegEx">Enable RegEx Search</label>
-<!--          <input type="radio" id="Titles" value="Titles" v-on:click="showAdvancedSearch = !showAdvancedSearch"/>-->
-<!--          <label for="Titles">Search in titles   </label>-->
-<!--          <input type="radio" id="Content" value="Content" v-on:click="showAdvancedSearch = !showAdvancedSearch"/>-->
-<!--          <label for="Content">Search in content   </label>-->
+  <!--          <input type="radio" id="Titles" value="Titles" v-on:click="showAdvancedSearch = !showAdvancedSearch"/>-->
+  <!--          <label for="Titles">Search in titles   </label>-->
+  <!--          <input type="radio" id="Content" value="Content" v-on:click="showAdvancedSearch = !showAdvancedSearch"/>-->
+  <!--          <label for="Content">Search in content   </label>-->
         </div>
           <div v-if=showAdvancedSearch>
             <div>
@@ -69,13 +69,13 @@ export default {
       books: [],
       avatar: require('./assets/default-avatar.png'),
       showQuery: false,
-      showAdvancedSearch: false,
-      recommendations: {
-        book: '',
-        recommendations: []
-      }
-      // searchInTitles: false,
-      // searchInContent: false
+        showAdvancedSearch: false,
+        recommendations: {
+          book: '',
+          recommendations: []
+        }
+        // searchInTitles: false,
+        // searchInContent: false
     }
   },
   methods: {
@@ -108,12 +108,13 @@ export default {
       ).then(res => {
         this.showQuery = true;
         this.books = [];
-        let json = JSON.parse(JSON.stringify(res.data.book));
+        console.log(res.data)
+        let json = JSON.parse(JSON.stringify(res.data.books));
         for (let entry in json) {
           this.books.push(json[entry])
         }
-        this.recommendations = (JSON.parse(JSON.stringify(res.data.recommendations)))
-        console.log(this.recommendations)
+          this.recommendations = (JSON.parse(JSON.stringify(res.data.recommendations)))
+          console.log(this.recommendations)
         console.log(res.data)
       })
       .catch(err => {
@@ -158,23 +159,23 @@ export default {
   text-decoration: none;
   display: inline-block;
   font-size: 16px;
-  margin: 8px 0;
-  transition: width 0.4s ease-in-out;
-  background-color: white;
-  background-position: 10px 10px;
-  background-repeat: no-repeat;
-  border: 3px solid #797979;
-  height: 60px;
-  border-radius: 5px 5px 5px 5px;
-  outline: none;
-  color: #4c4c4c;
-  cursor: pointer;
+    margin: 8px 0;
+    transition: width 0.4s ease-in-out;
+    background-color: white;
+    background-position: 10px 10px;
+    background-repeat: no-repeat;
+    border: 3px solid #797979;
+    height: 60px;
+    border-radius: 5px 5px 5px 5px;
+    outline: none;
+    color: #4c4c4c;
+    cursor: pointer;
 
-}
-.search-button:hover {
-  background-color: rgba(172, 172, 172, 0.6); /* Green */
-  color: white;
-}
+  }
+  .search-button:hover {
+    background-color: rgba(172, 172, 172, 0.6); /* Green */
+    color: white;
+  }
 .form {
   font-size: 24px;
   width: 50%;
@@ -185,12 +186,12 @@ export default {
   background-color: white;
   background-position: 10px 10px;
   background-repeat: no-repeat;
-  border: 3px solid #797979;
-  margin-right: 15px;
-  height: 60px;
-  border-radius: 5px 5px 5px 5px;
-  outline: none;
-  color: #4c4c4c;
+    border: 3px solid #797979;
+    margin-right: 15px;
+    height: 60px;
+    border-radius: 5px 5px 5px 5px;
+    outline: none;
+    color: #4c4c4c;
 }
 
 .container {
@@ -225,9 +226,9 @@ export default {
   column-count: 2;
   flex-flow: column wrap;
 }
-/*.checkboxes{*/
-/*  column-count: 2;*/
-/*}*/
+  /*.checkboxes{*/
+  /*  column-count: 2;*/
+  /*}*/
 .avatar{
   /*max-width:8%;*/
   /*max-height:8%;*/
@@ -248,46 +249,5 @@ export default {
 .avatar:hover .tooltiptext {
   cursor: pointer;
   visibility: visible;
-}
-.search {
-  width: 100%;
-  /*position: relative;*/
-  /*display: flex;*/
-}
-
-.searchTerm {
-  width: 100%;
-  border: 3px solid #00B4CC;
-  border-right: none;
-  padding: 5px;
-  height: 20px;
-  border-radius: 5px 0 0 5px;
-  outline: none;
-  color: #9DBFAF;
-}
-
-.searchTerm:focus{
-  color: #00B4CC;
-}
-
-.searchButton {
-  width: 40px;
-  height: 36px;
-  border: 1px solid #00B4CC;
-  background: #00B4CC;
-  text-align: center;
-  color: #fff;
-  border-radius: 0 5px 5px 0;
-  cursor: pointer;
-  font-size: 20px;
-}
-
-/*Resize the wrap to see the search bar change!*/
-.wrap{
-  width: 30%;
-  /*position: absolute;*/
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
 }
 </style>

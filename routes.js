@@ -39,7 +39,7 @@ async function setup_index () {
             body: {
                 mappings: {
                     properties: {
-                        id: { type: 'text'},
+                        id: { type: 'integer' },
                         title: { type: 'text' },
                         content: { type: 'text' },
                         authors: { type: 'object' },
@@ -64,7 +64,7 @@ async function read_books() {
         .map(f => data_folder + f)
         .map(path => fs.readFileSync(path, 'utf8'))
         .map(rawFile => JSON.parse(rawFile))
-        .map(json => (({title, content, formats, authors, languages, subjects}) => ({title, content, formats, authors, languages, subjects}))(json))
+        .map(json => (({id, title, content, formats, authors, languages, subjects}) => ({id, title, content, formats, authors, languages, subjects}))(json))
     let i = 0;
     const batchSize = 10;
     while(i < thingsToIndex.length){
@@ -115,7 +115,6 @@ router.use((req, res, next) => {
 });
 
 router.get('/book', (req, res) => {
-    console.log(req.query);
     if (req.query.search && req.query.regex) {
         let RegExQuery = req.query.search;
         console.log(RegExQuery);
@@ -138,7 +137,8 @@ router.get('/book', (req, res) => {
         .then(resp => {
             console.log(resp.body.hits)
             return res.status(200).json({
-                book: resp.body.hits.hits,
+                books: resp.body.hits.hits,
+                recommendations: getRecommendationsArray()
             });
         })
         .catch(err => {
@@ -162,18 +162,21 @@ router.get('/book', (req, res) => {
                 }
             }
         })
-        .then(resp => {
-            return res.status(200).json({
-                book: resp.body.hits.hits,
-                recommendations: getRecommendationsArray(resp.body.hits.hits)
+            .then(resp => {
+                let booksArray = resp.body.hits.hits
+                booksArray.forEach(book => delete book._source.content)
+                // getRecommendationsArray(booksArray) //todo: do the recommendations here, not in return
+                return res.status(200).json({
+                    books: booksArray,
+                    recommendations: getRecommendationsArray(booksArray)
+                });
+            })
+            .catch(err => {
+                return res.status(500).json({
+                    msg: 'SEARCH: Error',
+                    error: err,
+                });
             });
-        })
-        .catch(err => {
-            return res.status(500).json({
-                msg: 'SEARCH: Error',
-                error: err,
-            });
-        });
     } else {
         return res.status(200).json({
             msg: 'No result',
@@ -181,10 +184,12 @@ router.get('/book', (req, res) => {
     }
 });
 
-function getRecommendationsArray(books) {
-    return "THOSE ARE THE RECOMMENDATIONS"
-    // TODO: return map of reccommendations for each book. Look it up in the major graph json file and return array of arrays
-}
+    function getRecommendationsArray(books) {
+        const graphFolder = './data/recommender';
+
+        return "THOSE ARE THE RECOMMENDATIONS"
+        // TODO: return map of reccommendations for each book. Look it up in the major graph json file and return array of arrays
+    }
 
 
 module.exports = router;
