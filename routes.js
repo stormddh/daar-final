@@ -115,81 +115,63 @@ router.use((req, res, next) => {
 });
 
 router.get('/book', (req, res) => {
+    let query = {};
     if (req.query.search && req.query.regex) {
-        let RegExQuery = req.query.search;
-        console.log(RegExQuery);
-
-        elasticClient.search({
-            index: 'book_index',
-            body: {
-                query: {
-                    regexp: {
-                        title: {
-                            value: RegExQuery,
-                            flags: "ALL",
-                            case_insensitive: true,
-                            rewrite: "constant_score"
-                        }
-                    }
+        query = {
+            regexp: {
+                title: {
+                    value: req.query.search,
+                    flags: "ALL",
+                    case_insensitive: true,
+                    rewrite: "constant_score"
                 }
             }
-        })
-        .then(resp => {
-            console.log(resp.body.hits)
-            return res.status(200).json({
-                books: resp.body.hits.hits,
-                recommendations: getRecommendationsArray()
-            });
-        })
-        .catch(err => {
-            console.log(err.toString())
-
-            return res.status(500).json({
-                msg: 'SEARCH: Error',
-                error: err,
-            });
-        });
-    }
-    else if (req.query.search) {
-        elasticClient.search({
-            index: 'book_index',
-            body: {
-                query: {
-                    multi_match: {
-                        query: req.query.search,
-                        fields: ['title', 'content']
-                    }
-                }
+        }
+    } else if (req.query.search) {
+        query = {
+            multi_match: {
+                query: req.query.search,
+                fields: ['title', 'content']
             }
-        })
-            .then(resp => {
-                let booksArray = resp.body.hits.hits
-                booksArray.forEach(book => delete book._source.content)
-                // getRecommendationsArray(booksArray) //todo: do the recommendations here, not in return
-                return res.status(200).json({
-                    books: booksArray,
-                    recommendations: getRecommendationsArray(booksArray)
-                });
-            })
-            .catch(err => {
-                return res.status(500).json({
-                    msg: 'SEARCH: Error',
-                    error: err,
-                });
-            });
+        }
     } else {
         return res.status(200).json({
             msg: 'No result',
         });
     }
+
+    console.log(query);
+
+    elasticClient.search({
+        index: 'book_index',
+        body: {
+            query: query,
+        }
+    })
+    .then(resp => {
+        let booksArray = resp.body.hits.hits;
+        booksArray.forEach(book => delete book._source.content);
+        console.log(resp.body.hits);
+        return res.status(200).json({
+            books: booksArray,
+            recommendations: getRecommendationsArray(booksArray)
+        });
+    })
+    .catch(err => {
+        console.log(err.toString());
+        return res.status(500).json({
+            msg: 'SEARCH: Error',
+            error: err,
+        });
+    });
 });
 
-    function getRecommendationsArray(books) {
-        const graphFolder = './data/recommender';
+function getRecommendationsArray(books) {
+    const graphFolder = './data/recommender';
 
-        return "THOSE ARE THE RECOMMENDATIONS"
-        // TODO: return map of reccommendations for each book. Look it up in the major graph json file and return array of arrays
-    }
+    return "THOSE ARE THE RECOMMENDATIONS"
+    // TODO: return map of reccommendations for each book. Look it up in the major graph json file and return array of arrays
+}
 
 
 module.exports = router;
