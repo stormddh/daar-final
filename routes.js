@@ -66,7 +66,7 @@ async function read_books() {
         .map(rawFile => JSON.parse(rawFile))
         .map(json => (({title, content, formats, authors, languages, subjects}) => ({title, content, formats, authors, languages, subjects}))(json))
     let i = 0;
-    const batchSize = 5;
+    const batchSize = 10;
     while(i < thingsToIndex.length){
         let bulkBody = thingsToIndex
             .slice(i, i+batchSize)
@@ -112,19 +112,6 @@ router.use((req, res, next) => {
         console.log(err);
     })
     next();
-});
-
-router.get('/book/:file', (req, res) => {
-    const file_name = req.params.file
-    const book_path = "data/" + file_name
-
-    if (fs.existsSync(book_path)) {
-        res.contentType("application/pdf");
-        fs.createReadStream(book_path).pipe(res);
-    } else {
-        res.status(500);
-        res.send('File not found');
-    }
 });
 
 router.get('/book', (req, res) => {

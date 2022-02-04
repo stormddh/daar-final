@@ -1,5 +1,5 @@
-# DAAR Project 2 - Elastic search
-### Do Duc Huy, Patryk Fussek
+# DAAR Final project - Book search engine (choice A)
+### Carlo Segat, Do Duc Huy, Patryk Fussek
 ### Fall semester 2021
 ---
 ### Setup
@@ -27,13 +27,3 @@ in 'elastic_front' directory, first install the dependencies by `yarn install`, 
 1. `cd docker`
 2. `docker-compose up -d`
 3. it might be necessary to change your system memory settings: `sysctl -w vm.max_map_count=262144`
-
-### API
-GET - get title
-> http://localhost:3000/api/articles/\<title\>
-
-POST
-> http://localhost:3000/api/articles
-
-GET - search article
-> http://localhost:3000/api/articles?search=\<keyword\>
