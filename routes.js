@@ -39,6 +39,7 @@ async function setup_index () {
             body: {
                 mappings: {
                     properties: {
+                        id: { type: 'text'},
                         title: { type: 'text' },
                         content: { type: 'text' },
                         authors: { type: 'object' },
@@ -177,6 +178,7 @@ router.get('/book', (req, res) => {
         .then(resp => {
             return res.status(200).json({
                 book: resp.body.hits.hits,
+                recommendations: getRecommendationsArray(resp.body.hits.hits)
             });
         })
         .catch(err => {
@@ -191,5 +193,11 @@ router.get('/book', (req, res) => {
         });
     }
 });
+
+function getRecommendationsArray(books) {
+    return "THOSE ARE THE RECOMMENDATIONS"
+    // TODO: return map of reccommendations for each book. Look it up in the major graph json file and return array of arrays
+}
+
 
 module.exports = router;
