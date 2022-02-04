@@ -10,7 +10,7 @@
       <div>
         <div class="checkboxes">
           <input type="checkbox" id="RegEx" value="Enable RegEx" v-on:click="showAdvancedSearch = !showAdvancedSearch"/>
-          <label for="RegEx">Enable RegEx Search   </label>
+          <label for="RegEx">Enable RegEx Search</label>
 <!--          <input type="radio" id="Titles" value="Titles" v-on:click="showAdvancedSearch = !showAdvancedSearch"/>-->
 <!--          <label for="Titles">Search in titles   </label>-->
 <!--          <input type="radio" id="Content" value="Content" v-on:click="showAdvancedSearch = !showAdvancedSearch"/>-->
@@ -95,14 +95,16 @@ export default {
       return flagUrl
     },
     queryDatabase() {
-      let elasticQuery = this.query
-      if (this.showAdvancedSearch == true) elasticQuery += "REGEX";
-      axios.get('/api/book?search=' + elasticQuery,
-          {
-            headers: {
-              'Content-Type': 'multipart/form-data'
-            }
-          }
+      let requestOptions = {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        },
+        params: {
+          search: this.query,
+          regex: this.showAdvancedSearch,
+        }
+      };
+      axios.get('/api/book', requestOptions
       ).then(res => {
         this.showQuery = true;
         this.books = [];

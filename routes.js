@@ -115,10 +115,10 @@ router.use((req, res, next) => {
 });
 
 router.get('/book', (req, res) => {
-    if (req.query.search && req.query.search.includes("REGEX")) {
-        let RegExQuery = req.query.search.replace('REGEX', '');
-        console.log(req.query.search)
-        console.log(RegExQuery)
+    console.log(req.query);
+    if (req.query.search && req.query.regex) {
+        let RegExQuery = req.query.search;
+        console.log(RegExQuery);
 
         elasticClient.search({
             index: 'book_index',
