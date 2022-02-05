@@ -8,8 +8,14 @@
       <input class="form" type="text" v-model="query"/>
       <input class="search-button" type="submit" value="Search!" v-on:click="queryDatabase"/>
       <div>
-        <input type="checkbox" id="RegEx" value="Enable RegEx" v-on:click="showAdvancedSearch = !showAdvancedSearch"/>
-        <label for="RegEx">Enable RegEx Search</label>
+        <div class="checkboxes">
+          <input type="checkbox" id="RegEx" value="Enable RegEx" v-on:click="showAdvancedSearch = !showAdvancedSearch"/>
+          <label for="RegEx">Enable RegEx Search</label>
+  <!--          <input type="radio" id="Titles" value="Titles" v-on:click="showAdvancedSearch = !showAdvancedSearch"/>-->
+  <!--          <label for="Titles">Search in titles   </label>-->
+  <!--          <input type="radio" id="Content" value="Content" v-on:click="showAdvancedSearch = !showAdvancedSearch"/>-->
+  <!--          <label for="Content">Search in content   </label>-->
+        </div>
           <div v-if=showAdvancedSearch>
             <div>
               <h2>Advanced Search:</h2>
@@ -63,18 +69,23 @@ export default {
       books: [],
       avatar: require('./assets/default-avatar.png'),
       showQuery: false,
-      showAdvancedSearch: false
+        showAdvancedSearch: false,
+        recommendations: {
+          book: '',
+          recommendations: []
+        }
+        // searchInTitles: false,
+        // searchInContent: false
     }
   },
   methods: {
-    getImg(uriObject) {
-
-      const k = Object.keys(uriObject).find(uri => uri.includes("image"))
-      console.log(uriObject[k])
-      return uriObject[k]
+    getImg(uriArray) {
+      const k = Object.keys(uriArray).find(uri => uri.includes("image"))
+      let uri = uriArray[k].replace("small", "medium")
+      return uri
     },
     getTxtUri(uriArray) {
-      window.open(uriArray.find(uri => uri.includes(".txt")))
+      window.open(Object.values(uriArray).find(uri => uri.includes(".txt")))
     },
     getFlagUrl(languages){
       let flagUrl
@@ -84,22 +95,26 @@ export default {
       return flagUrl
     },
     queryDatabase() {
-      //todo  // here in the GET URL will come the this.query variable from the input form, f.ex "Java"
-      let elasticQuery = this.query
-      if (this.showAdvancedSearch == true) elasticQuery += "REGEX";
-      axios.get('/api/book?search=' + elasticQuery,
-          {
-            headers: {
-              'Content-Type': 'multipart/form-data'
-            }
-          }
+      let requestOptions = {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        },
+        params: {
+          search: this.query,
+          regex: this.showAdvancedSearch,
+        }
+      };
+      axios.get('/api/book', requestOptions
       ).then(res => {
         this.showQuery = true;
         this.books = [];
-        let json = JSON.parse(JSON.stringify(res.data.book));
+        console.log(res.data)
+        let json = JSON.parse(JSON.stringify(res.data.books));
         for (let entry in json) {
           this.books.push(json[entry])
         }
+          this.recommendations = (JSON.parse(JSON.stringify(res.data.recommendations)))
+          console.log(this.recommendations)
         console.log(res.data)
       })
       .catch(err => {
@@ -144,8 +159,23 @@ export default {
   text-decoration: none;
   display: inline-block;
   font-size: 16px;
-}
+    margin: 8px 0;
+    transition: width 0.4s ease-in-out;
+    background-color: white;
+    background-position: 10px 10px;
+    background-repeat: no-repeat;
+    border: 3px solid #797979;
+    height: 60px;
+    border-radius: 5px 5px 5px 5px;
+    outline: none;
+    color: #4c4c4c;
+    cursor: pointer;
 
+  }
+  .search-button:hover {
+    background-color: rgba(172, 172, 172, 0.6); /* Green */
+    color: white;
+  }
 .form {
   font-size: 24px;
   width: 50%;
@@ -156,6 +186,12 @@ export default {
   background-color: white;
   background-position: 10px 10px;
   background-repeat: no-repeat;
+    border: 3px solid #797979;
+    margin-right: 15px;
+    height: 60px;
+    border-radius: 5px 5px 5px 5px;
+    outline: none;
+    color: #4c4c4c;
 }
 
 .container {
@@ -190,6 +226,9 @@ export default {
   column-count: 2;
   flex-flow: column wrap;
 }
+  /*.checkboxes{*/
+  /*  column-count: 2;*/
+  /*}*/
 .avatar{
   /*max-width:8%;*/
   /*max-height:8%;*/
@@ -211,5 +250,4 @@ export default {
   cursor: pointer;
   visibility: visible;
 }
-
 </style>

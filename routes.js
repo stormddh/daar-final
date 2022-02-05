@@ -39,6 +39,7 @@ async function setup_index () {
             body: {
                 mappings: {
                     properties: {
+                        id: { type: 'integer' },
                         title: { type: 'text' },
                         content: { type: 'text' },
                         authors: { type: 'object' },
@@ -63,9 +64,9 @@ async function read_books() {
         .map(f => data_folder + f)
         .map(path => fs.readFileSync(path, 'utf8'))
         .map(rawFile => JSON.parse(rawFile))
-        .map(json => (({title, content, formats, authors, languages, subjects}) => ({title, content, formats, authors, languages, subjects}))(json))
+        .map(json => (({id, title, content, formats, authors, languages, subjects}) => ({id, title, content, formats, authors, languages, subjects}))(json))
     let i = 0;
-    const batchSize = 5;
+    const batchSize = 10;
     while(i < thingsToIndex.length){
         let bulkBody = thingsToIndex
             .slice(i, i+batchSize)
@@ -113,83 +114,64 @@ router.use((req, res, next) => {
     next();
 });
 
-router.get('/book/:file', (req, res) => {
-    const file_name = req.params.file
-    const book_path = "data/" + file_name
-
-    if (fs.existsSync(book_path)) {
-        res.contentType("application/pdf");
-        fs.createReadStream(book_path).pipe(res);
-    } else {
-        res.status(500);
-        res.send('File not found');
-    }
-});
-
 router.get('/book', (req, res) => {
-    if (req.query.search && req.query.search.includes("REGEX")) {
-        let RegExQuery = req.query.search.replace('REGEX', '');
-        console.log(req.query.search)
-        console.log(RegExQuery)
-
-        elasticClient.search({
-            index: 'book_index',
-            body: {
-                query: {
-                    regexp: {
-                        title: {
-                            value: RegExQuery,
-                            flags: "ALL",
-                            case_insensitive: true,
-                            rewrite: "constant_score"
-                        }
-                    }
+    let query = {};
+    if (req.query.search && req.query.regex) {
+        query = {
+            regexp: {
+                title: {
+                    value: req.query.search,
+                    flags: "ALL",
+                    case_insensitive: true,
+                    rewrite: "constant_score"
                 }
             }
-        })
-        .then(resp => {
-            console.log(resp.body.hits)
-            return res.status(200).json({
-                book: resp.body.hits.hits,
-            });
-        })
-        .catch(err => {
-            console.log(err.toString())
-
-            return res.status(500).json({
-                msg: 'SEARCH: Error',
-                error: err,
-            });
-        });
-    }
-    else if (req.query.search) {
-        elasticClient.search({
-            index: 'book_index',
-            body: {
-                query: {
-                    multi_match: {
-                        query: req.query.search,
-                        fields: ['title', 'content']
-                    }
-                }
+        }
+    } else if (req.query.search) {
+        query = {
+            multi_match: {
+                query: req.query.search,
+                fields: ['title', 'content']
             }
-        })
-        .then(resp => {
-            return res.status(200).json({
-                book: resp.body.hits.hits,
-            });
-        })
-        .catch(err => {
-            return res.status(500).json({
-                msg: 'SEARCH: Error',
-                error: err,
-            });
-        });
+        }
     } else {
         return res.status(200).json({
             msg: 'No result',
         });
     }
+
+    console.log(query);
+
+    elasticClient.search({
+        index: 'book_index',
+        body: {
+            query: query,
+        }
+    })
+    .then(resp => {
+        let booksArray = resp.body.hits.hits;
+        booksArray.forEach(book => delete book._source.content);
+        console.log(resp.body.hits);
+        return res.status(200).json({
+            books: booksArray,
+            recommendations: getRecommendationsArray(booksArray)
+        });
+    })
+    .catch(err => {
+        console.log(err.toString());
+        return res.status(500).json({
+            msg: 'SEARCH: Error',
+            error: err,
+        });
+    });
 });
+
+function getRecommendationsArray(books) {
+    const graphFolder = './data/recommender';
+
+    return "THOSE ARE THE RECOMMENDATIONS"
+    // TODO: return map of reccommendations for each book. Look it up in the major graph json file and return array of arrays
+}
+
 
 module.exports = router;
