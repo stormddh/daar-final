@@ -70,6 +70,7 @@ async function read_books() {
         .map(json => (({id, title, content, formats, authors, languages, subjects}) => ({id, title, content, formats, authors, languages, subjects}))(json))
     let i = 0;
     const batchSize = 50;
+    console.time()
     while(i < thingsToIndex.length){
         let bulkBody = thingsToIndex
             .slice(i, i + batchSize)
@@ -86,9 +87,9 @@ async function read_books() {
             console.log(e);
         }
         i += batchSize
-        console.log("indexed " + i + ' documents')
+        console.log(": indexed " + i + ' documents')
     }
-
+    console.timeEnd();
 }
 
 async function setupall(){
