@@ -5,15 +5,19 @@
       <p>To browse through the books in Library, type in a searched phrase or author and a list of adequate
         books will be shown. <br> F.ex "American", "La" (to get results in different languages), or "Odyssey"
       </p>
-      <input class="form" type="text" v-model="query"/>
-      <input class="search-button" type="submit" value="Search!" v-on:click="queryDatabase"/>
       <div>
-        <input type="checkbox" id="RegEx" value="Enable RegEx" v-on:click="showAdvancedSearch = !showAdvancedSearch"/>
-        <label for="RegEx">Enable RegEx Search</label>
+        <input class="form" type="text" v-model="query"/>
+        <input class="search-button" type="submit" value="Search!" v-on:click="queryDatabase"/>
+      </div>
+      <div>
+        <div class="checkboxes">
+          <input type="checkbox" id="RegEx" value="Enable RegEx" v-on:click="showAdvancedSearch = !showAdvancedSearch"/>
+          <label for="RegEx">Enable RegEx Search</label>
+        </div>
           <div v-if=showAdvancedSearch>
             <div>
               <h2>Advanced Search:</h2>
-              <div>EXAMPLE REGEX QUERIES (for dev purp):
+              <div>EXAMPLE REGEX QUERIES - Title only (for dev purp):
                 <p>l.*y</p>
                 <p>lov.*</p>
               </div>
@@ -24,13 +28,15 @@
 
     <h2 v-if="showQuery"> List of books for given query: {{query}}</h2>
 
-    <div class="list-container">
-      <div class="list-entry" v-for="book in books" :key="book">
-
-        <div class="avatar" @hover="hover = true">
-          <img  :src=getImg(book._source.formats) @click=getTxtUri(book._source.formats)
-          style=" padding-top: 30px; margin-left:auto; margin-right:auto; display:block;">
-          <span class="tooltiptext">Click to open the book in new tab !</span>
+    <div class="list-container" v-for="book in books" :key="book">
+      <div class="list-entry">
+        <div>
+          <div class="avatar">
+            <img  :src=getImg(book._source.formats) @click=getTxtUri(book._source.formats)
+                  style=" padding-top: 30px; margin-left:auto; margin-right:auto; display:block;" @hover="hover = true">
+            <span class="tooltiptext">Click to open the book in new tab !</span>
+          </div>
+          <input class="search-button" type="submit" value="Show recommendations" v-on:click="getRecommendations(book._id)"/>
         </div>
         <div style="display: inline-block;">
           <h3>Accuracy: {{ book._score }}</h3>
@@ -41,6 +47,37 @@
           <img :alt= book._source.language
                :src=getFlagUrl(book._source.languages)
                style="height:30px; width:auto; max-width:500px;"/>
+        </div>
+      </div>
+      <div class="recommendations" v-if="showRecommendations[book._id]">
+      <div v-if="book._source.recommendations.contentBased.length !== 0">
+        <h3> Recommendations based on content:</h3>
+        <div class="list-entry" >
+          <div style="max-height: 20%" v-for="recommendation in book._source.recommendations.contentBased" :key="recommendation">
+            <div v-if="recommendation.title">
+              <div style="display: inline-block; cursor: pointer" @click=getTxtUri(recommendation.formats)>
+                <div class="text-link" style="cursor: pointer; padding: 5px">
+                  📚 {{ recommendation.title}} </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div v-if="book._source.recommendations.subjectBased.length !== 0">
+        <h3> Recommendations based on subject:</h3>
+        <div class="list-entry">
+          <div style="max-height: 20%" v-for="recommendation in book._source.recommendations.subjectBased" :key="recommendation">
+            <div v-if="recommendation.title">
+              <div style="display: inline-block; cursor: pointer" @click=getTxtUri(recommendation.formats)>
+                <div class="text-link" style="cursor: pointer; padding: 5px">
+                  📚 {{ recommendation.title}}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+        <div v-else>
+          <h3> No recommendations for this book :( </h3>
         </div>
       </div>
     </div>
@@ -63,18 +100,19 @@ export default {
       books: [],
       avatar: require('./assets/default-avatar.png'),
       showQuery: false,
-      showAdvancedSearch: false
+      showAdvancedSearch: false,
+      showRecommendations: [],
+
     }
   },
   methods: {
-    getImg(uriObject) {
-
-      const k = Object.keys(uriObject).find(uri => uri.includes("image"))
-      console.log(uriObject[k])
-      return uriObject[k]
+    getImg(uriArray) {
+      const k = Object.keys(uriArray).find(uri => uri.includes("image"))
+      let uri = uriArray[k].replace("small", "medium")
+      return uri
     },
     getTxtUri(uriArray) {
-      window.open(uriArray.find(uri => uri.includes(".txt")))
+      window.open(Object.values(uriArray).find(uri => uri.includes(".txt")))
     },
     getFlagUrl(languages){
       let flagUrl
@@ -83,28 +121,37 @@ export default {
       } else flagUrl = "http://purecatamphetamine.github.io/country-flag-icons/3x2/" + languages[0].toString().toUpperCase() + ".svg"
       return flagUrl
     },
+    getRecommendations(id){
+      this.initiateBooleans()
+      this.showRecommendations[id] = !this.showRecommendations[id]
+    },
+
     queryDatabase() {
-      //todo  // here in the GET URL will come the this.query variable from the input form, f.ex "Java"
-      let elasticQuery = this.query
-      if (this.showAdvancedSearch == true) elasticQuery += "REGEX";
-      axios.get('/api/book?search=' + elasticQuery,
-          {
-            headers: {
-              'Content-Type': 'multipart/form-data'
-            }
-          }
+      let requestOptions = {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        },
+        params: {
+          search: this.query,
+          regex: this.showAdvancedSearch,
+        }
+      };
+      axios.get('/api/book', requestOptions
       ).then(res => {
         this.showQuery = true;
         this.books = [];
-        let json = JSON.parse(JSON.stringify(res.data.book));
+        console.log(res.data)
+        let json = JSON.parse(JSON.stringify(res.data.books));
         for (let entry in json) {
           this.books.push(json[entry])
         }
-        console.log(res.data)
       })
       .catch(err => {
         console.log(err);
       });
+    },
+    initiateBooleans(){
+      for (let book in this.books) this.showRecommendations[book._id] = false
     }
   }
 }
@@ -127,25 +174,30 @@ export default {
   margin-bottom: 5%;
 }
 
-.button {
-  background-color: #118617; /* Green */
-  border: none;
-  color: white;
-  padding: 15px 32px;
-  text-align: center;
-  text-decoration: none;
-  display: inline-block;
-  font-size: 16px;
-}
-
 .search-button {
+  position:inherit;
   padding: 9px 25px;
   text-align: center;
   text-decoration: none;
   display: inline-block;
   font-size: 16px;
-}
+    margin: 8px 0;
+    transition: width 0.4s ease-in-out;
+    background-color: white;
+    background-position: 10px 10px;
+    background-repeat: no-repeat;
+    border: 3px solid #797979;
+    height: 60px;
+    border-radius: 5px 5px 5px 5px;
+    outline: none;
+    color: #4c4c4c;
+    cursor: pointer;
 
+  }
+  .search-button:hover {
+    background-color: rgba(172, 172, 172, 0.6); /* Green */
+    color: white;
+  }
 .form {
   font-size: 24px;
   width: 50%;
@@ -156,6 +208,12 @@ export default {
   background-color: white;
   background-position: 10px 10px;
   background-repeat: no-repeat;
+    border: 3px solid #797979;
+    margin-right: 15px;
+    height: 60px;
+    border-radius: 5px 5px 5px 5px;
+    outline: none;
+    color: #4c4c4c;
 }
 
 .container {
@@ -190,26 +248,53 @@ export default {
   column-count: 2;
   flex-flow: column wrap;
 }
+
+.text-link.span {
+  background: none repeat scroll 0 0 #F8F8F8;
+  border: 5px solid #DFDFDF;
+  color: #717171;
+  font-size: 13px;
+  height: 30px;
+  letter-spacing: 1px;
+  line-height: 30px;
+  margin: 0 auto;
+  position: relative;
+  text-align: center;
+  text-transform: uppercase;
+  top: -80px;
+  left:-30px;
+  display:none;
+  padding:0 20px;
+}
+.text-link:hover {
+  font-weight: 900;
+}
+
+
 .avatar{
-  /*max-width:8%;*/
-  /*max-height:8%;*/
+  cursor: pointer;
+  position:relative; /* must have this */
 
 }
 
 .avatar .tooltiptext {
   visibility: hidden;
-  width: 120px;
-  background-color: black;
-  color: #fff;
+  position: relative;
+  width: 140px;
+  padding: 15px 10px;
+  border-radius: 4px;
   text-align: center;
-  padding: 5px 0;
-  border-radius: 6px;
-  position: absolute;
-  z-index: 1;
+  color: #fff;
+  background-color: rgba(0, 0, 0, 0.5);
+
 }
 .avatar:hover .tooltiptext {
   cursor: pointer;
   visibility: visible;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 </style>

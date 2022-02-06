@@ -1,16 +1,19 @@
 const fs = require('fs');
 
-function extractWordSet(path){
+function extractWordSet(path, subjectBased=false){
     let doc = readFile(path);
-    doc = extractRelevantText(doc)
+    doc = extractRelevantText(doc, subjectBased)
     doc = tokenise(doc)
     doc = removeStopWords(doc)
     return new Set(doc);
 }
 
-function extractRelevantText(rawText){
-    if(rawText[0] == '{'){ // proxy for JSON string
+function extractRelevantText(rawText, subjectBased){
+    if(rawText[0] == '{' && ! subjectBased){ // proxy for JSON string
         rawText = JSON.parse(rawText)['content']
+    }
+    if(rawText[0] == '{' && subjectBased){ // proxy for JSON string
+        return JSON.parse(rawText)['subjects'].join(' ')
     }
     const BEGIN = new RegExp('[\\*\\*\\*]*\s*START OF .* PROJECT.*[\\*\\*\\*]*');
     const END = new RegExp('[\\*\\*\\*]*\s*END OF .* PROJECT.*[\\*\\*\\*]*');

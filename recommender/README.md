@@ -28,5 +28,5 @@ adjecency list of the graph.
 
 ## Use it
 To use this system and get the recommendatiosn you need to invoke the function 
-```etRecommendations(bookId)``` in the file ```/recommender/get_recommendations.js```
+```getRecommendations(bookId)``` in the file ```/recommender/get_recommendations.js```
 and pass the document ID you are interested in.

@@ -3,6 +3,8 @@ const axios = require('axios');
 const express = require('express');
 const fs = require('fs');
 const {tokenise, extractRelevantText, removeStopWords} = require("./recommender/_recommender");
+const jaccardGraphContent = require('./data/recommender/jaccard_graph_content.json');
+const jaccardGraphSubject = require('./data/recommender/jaccard_graph_subject.json');
 
 const router = express.Router();
 
@@ -23,6 +25,7 @@ elasticClient.ping({},
         }
     }
 );
+
 async function fetchIndexObject(indexName) {
     const result = await elasticClient.indices.get(
         {index: indexName},
@@ -39,12 +42,13 @@ async function setup_index () {
             body: {
                 mappings: {
                     properties: {
+                        id: { type: 'integer' },
                         title: { type: 'text' },
                         content: { type: 'text' },
                         authors: { type: 'object' },
                         formats: { type: 'object' },
-                        languages : {type: 'text'},
-                        subjects: {type: 'text'},
+                        languages: { type: 'text' },
+                        subjects: { type: 'text' },
                     }
                 }
             }
@@ -63,12 +67,13 @@ async function read_books() {
         .map(f => data_folder + f)
         .map(path => fs.readFileSync(path, 'utf8'))
         .map(rawFile => JSON.parse(rawFile))
-        .map(json => (({title, content, formats, authors, languages, subjects}) => ({title, content, formats, authors, languages, subjects}))(json))
+        .map(json => (({id, title, content, formats, authors, languages, subjects}) => ({id, title, content, formats, authors, languages, subjects}))(json))
     let i = 0;
-    const batchSize = 5;
+    const batchSize = 50;
+    console.time()
     while(i < thingsToIndex.length){
         let bulkBody = thingsToIndex
-            .slice(i, i+batchSize)
+            .slice(i, i + batchSize)
             .reduce((old, current) => [...old, { index: { _index: 'book_index' } }, current], []);
         try {
             let apiResponse = await elasticClient.bulk({
@@ -82,11 +87,9 @@ async function read_books() {
             console.log(e);
         }
         i += batchSize
-        if(i % 50 == 0){
-            console.log("indexed " + i + ' documents')
-        }
+        console.log(": indexed " + i + ' documents')
     }
-
+    console.timeEnd();
 }
 
 async function setupall(){
@@ -113,83 +116,88 @@ router.use((req, res, next) => {
     next();
 });
 
-router.get('/book/:file', (req, res) => {
-    const file_name = req.params.file
-    const book_path = "data/" + file_name
-
-    if (fs.existsSync(book_path)) {
-        res.contentType("application/pdf");
-        fs.createReadStream(book_path).pipe(res);
-    } else {
-        res.status(500);
-        res.send('File not found');
-    }
-});
-
 router.get('/book', (req, res) => {
-    if (req.query.search && req.query.search.includes("REGEX")) {
-        let RegExQuery = req.query.search.replace('REGEX', '');
-        console.log(req.query.search)
-        console.log(RegExQuery)
-
-        elasticClient.search({
-            index: 'book_index',
-            body: {
-                query: {
-                    regexp: {
-                        title: {
-                            value: RegExQuery,
-                            flags: "ALL",
-                            case_insensitive: true,
-                            rewrite: "constant_score"
-                        }
-                    }
+    let query = {};
+    if (req.query.search && req.query.regex === 'true') {
+        query = {
+            regexp: {
+                title: {
+                    value: req.query.search,
+                    flags: "ALL",
+                    case_insensitive: true,
+                    rewrite: "constant_score"
                 }
             }
-        })
-        .then(resp => {
-            console.log(resp.body.hits)
-            return res.status(200).json({
-                book: resp.body.hits.hits,
-            });
-        })
-        .catch(err => {
-            console.log(err.toString())
-
-            return res.status(500).json({
-                msg: 'SEARCH: Error',
-                error: err,
-            });
-        });
-    }
-    else if (req.query.search) {
-        elasticClient.search({
-            index: 'book_index',
-            body: {
-                query: {
-                    multi_match: {
-                        query: req.query.search,
-                        fields: ['title', 'content']
-                    }
-                }
+        }
+    } else if (req.query.search) {
+        query = {
+            multi_match: {
+                query: req.query.search,
+                // boosts title field and author
+                fields: ['title^5', 'authors^10', 'content^0.5']
             }
-        })
-        .then(resp => {
-            return res.status(200).json({
-                book: resp.body.hits.hits,
-            });
-        })
-        .catch(err => {
-            return res.status(500).json({
-                msg: 'SEARCH: Error',
-                error: err,
-            });
-        });
+        }
     } else {
         return res.status(200).json({
             msg: 'No result',
         });
     }
+
+    elasticClient.search({
+        index: 'book_index',
+        body: {
+            query: query,
+        }
+    })
+    .then(async resp => {
+        let booksArray = resp.body.hits.hits;
+        booksArray.forEach(book => delete book._source.content);
+        await getRecommendationsArray(booksArray)
+        return res.status(200).json({
+            books: booksArray
+        });
+    })
+    .catch(err => {
+        console.log(err.toString());
+        return res.status(500).json({
+            msg: 'SEARCH: Error',
+            error: err,
+        });
+    });
 });
+
+async function getRecommendationsArray(books) {
+    const data_folder = './data/';
+
+    books.forEach(book => {
+        book._source["recommendations"] = {"contentBased": []}, {"subjectBased": []}
+        book._source.recommendations.contentBased = []
+        book._source.recommendations.subjectBased = []
+
+        if (jaccardGraphSubject[book._source.id]) {
+            populateRecommendations(jaccardGraphSubject)
+        }
+        if (jaccardGraphContent[book._source.id]) {
+            populateRecommendations(jaccardGraphContent)
+        }
+
+        function populateRecommendations(graph) {
+            graph[book._source.id].forEach(e => {
+                const recommendedBook = fs.readdirSync(data_folder)
+                    .filter(f => f.endsWith(e + '.json'))
+                    .map(f => data_folder + f)
+                    .map(path => fs.readFileSync(path, 'utf8'))
+                    .map(rawFile => JSON.parse(rawFile))
+                    .map(json => (({title, formats, authors}) => ({title, formats, authors}))(json))
+                if (recommendedBook[0]) {
+                    if (graph === jaccardGraphContent) book._source.recommendations.contentBased.push(recommendedBook[0])
+                    if (graph === jaccardGraphSubject) book._source.recommendations.subjectBased.push(recommendedBook[0])
+                }
+            })
+        }
+    })
+
+}
+
 
 module.exports = router;
