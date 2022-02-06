@@ -25,6 +25,7 @@ elasticClient.ping({},
         }
     }
 );
+
 async function fetchIndexObject(indexName) {
     const result = await elasticClient.indices.get(
         {index: indexName},
@@ -46,8 +47,8 @@ async function setup_index () {
                         content: { type: 'text' },
                         authors: { type: 'object' },
                         formats: { type: 'object' },
-                        languages : {type: 'text'},
-                        subjects: {type: 'text'},
+                        languages: { type: 'text' },
+                        subjects: { type: 'text' },
                     }
                 }
             }
@@ -68,10 +69,10 @@ async function read_books() {
         .map(rawFile => JSON.parse(rawFile))
         .map(json => (({id, title, content, formats, authors, languages, subjects}) => ({id, title, content, formats, authors, languages, subjects}))(json))
     let i = 0;
-    const batchSize = 10;
+    const batchSize = 50;
     while(i < thingsToIndex.length){
         let bulkBody = thingsToIndex
-            .slice(i, i+batchSize)
+            .slice(i, i + batchSize)
             .reduce((old, current) => [...old, { index: { _index: 'book_index' } }, current], []);
         try {
             let apiResponse = await elasticClient.bulk({
@@ -85,9 +86,7 @@ async function read_books() {
             console.log(e);
         }
         i += batchSize
-        if(i % 50 == 0){
-            console.log("indexed " + i + ' documents')
-        }
+        console.log("indexed " + i + ' documents')
     }
 
 }
@@ -133,7 +132,8 @@ router.get('/book', (req, res) => {
         query = {
             multi_match: {
                 query: req.query.search,
-                fields: ['title', 'content']
+                // boosts title field and author
+                fields: ['title^5', 'authors^10', 'content^0.5']
             }
         }
     } else {

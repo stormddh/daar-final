@@ -17,7 +17,7 @@
           <div v-if=showAdvancedSearch>
             <div>
               <h2>Advanced Search:</h2>
-              <div>EXAMPLE REGEX QUERIES (for dev purp):
+              <div>EXAMPLE REGEX QUERIES - Title only (for dev purp):
                 <p>l.*y</p>
                 <p>lov.*</p>
               </div>
