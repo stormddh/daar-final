@@ -3,6 +3,8 @@ const axios = require('axios');
 const express = require('express');
 const fs = require('fs');
 const {tokenise, extractRelevantText, removeStopWords} = require("./recommender/_recommender");
+const jaccardGraphContent = require('./data/recommender/jaccard_graph_content.json');
+const jaccardGraphSubject = require('./data/recommender/jaccard_graph_subject.json');
 
 const router = express.Router();
 
@@ -116,7 +118,7 @@ router.use((req, res, next) => {
 
 router.get('/book', (req, res) => {
     let query = {};
-    if (req.query.search && req.query.regex) {
+    if (req.query.search && req.query.regex === 'true') {
         query = {
             regexp: {
                 title: {
@@ -140,21 +142,18 @@ router.get('/book', (req, res) => {
         });
     }
 
-    console.log(query);
-
     elasticClient.search({
         index: 'book_index',
         body: {
             query: query,
         }
     })
-    .then(resp => {
+    .then(async resp => {
         let booksArray = resp.body.hits.hits;
         booksArray.forEach(book => delete book._source.content);
-        console.log(resp.body.hits);
+        await getRecommendationsArray(booksArray)
         return res.status(200).json({
-            books: booksArray,
-            recommendations: getRecommendationsArray(booksArray)
+            books: booksArray
         });
     })
     .catch(err => {
@@ -166,11 +165,37 @@ router.get('/book', (req, res) => {
     });
 });
 
-function getRecommendationsArray(books) {
-    const graphFolder = './data/recommender';
+async function getRecommendationsArray(books) {
+    const data_folder = './data/';
 
-    return "THOSE ARE THE RECOMMENDATIONS"
-    // TODO: return map of reccommendations for each book. Look it up in the major graph json file and return array of arrays
+    books.forEach(book => {
+        book._source["recommendations"] = {"contentBased": []}, {"subjectBased": []}
+        book._source.recommendations.contentBased = []
+        book._source.recommendations.subjectBased = []
+
+        if (jaccardGraphSubject[book._source.id]) {
+            populateRecommendations(jaccardGraphSubject)
+        }
+        if (jaccardGraphContent[book._source.id]) {
+            populateRecommendations(jaccardGraphContent)
+        }
+
+        function populateRecommendations(graph) {
+            graph[book._source.id].forEach(e => {
+                const recommendedBook = fs.readdirSync(data_folder)
+                    .filter(f => f.endsWith(e + '.json'))
+                    .map(f => data_folder + f)
+                    .map(path => fs.readFileSync(path, 'utf8'))
+                    .map(rawFile => JSON.parse(rawFile))
+                    .map(json => (({title, formats, authors}) => ({title, formats, authors}))(json))
+                if (recommendedBook[0]) {
+                    if (graph === jaccardGraphContent) book._source.recommendations.contentBased.push(recommendedBook[0])
+                    if (graph === jaccardGraphSubject) book._source.recommendations.subjectBased.push(recommendedBook[0])
+                }
+            })
+        }
+    })
+
 }
 
 
