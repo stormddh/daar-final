@@ -87,7 +87,7 @@ async function read_books() {
             console.log(e);
         }
         i += batchSize
-        console.log(": indexed " + i + ' documents')
+        console.log("indexed " + i + ' documents')
     }
     console.timeEnd();
 }
@@ -134,7 +134,7 @@ router.get('/book', (req, res) => {
             multi_match: {
                 query: req.query.search,
                 // boosts title field and author
-                fields: ['title^5', 'authors^10', 'content^0.5']
+                fields: ['title^5', 'authors.name^10', 'content^0.5']
             }
         }
     } else {
