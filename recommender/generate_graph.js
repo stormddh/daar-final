@@ -61,5 +61,10 @@ function generateContentSubjectGraph(doc_paths){
     fs.writeFileSync(folder + 'jaccard_graph_subject.json', JSON.stringify(adjacency_list), err => console.log("error writin the graph file"))
 }
 
+console.time()
 generateContentBasedGraph(doc_paths)
+console.timeEnd()
+
+console.time()
 generateContentSubjectGraph(doc_paths)
+console.timeEnd()

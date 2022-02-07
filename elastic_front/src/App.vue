@@ -1,8 +1,8 @@
 <template>
   <div class="container">
     <div>
-      <h2>Search the Library database:</h2>
-      <p>To browse through the books in Library, type in a searched phrase or author and a list of adequate
+      <h2>Search in the library database:</h2>
+      <p>To browse through the books in Gutenberg library, type in a searched phrase or author and a list of adequate
         books will be shown. <br> F.ex "American", "La" (to get results in different languages), or "Odyssey"
       </p>
       <div>
@@ -17,7 +17,7 @@
           <div v-if=showAdvancedSearch>
             <div>
               <h2>Advanced Search:</h2>
-              <div>EXAMPLE REGEX QUERIES - Title only (for dev purp):
+              <div>EXAMPLE REGEX QUERIES - Title only:
                 <p>l.*y</p>
                 <p>lov.*</p>
               </div>
@@ -27,19 +27,22 @@
     </div>
 
     <h2 v-if="showQuery"> List of books for given query: {{query}}</h2>
-
+    <h2 v-else>No books found</h2>
     <div class="list-container" v-for="book in books" :key="book">
       <div class="list-entry">
         <div>
           <div class="avatar">
+<!--            div for the thumbnail of the book as well as hyperlink to the book hosted on Gutenberg Project?-->
             <img  :src=getImg(book._source.formats) @click=getTxtUri(book._source.formats)
                   style=" padding-top: 30px; margin-left:auto; margin-right:auto; display:block;" @hover="hover = true">
             <span class="tooltiptext">Click to open the book in new tab !</span>
           </div>
           <input class="search-button" type="submit" value="Show recommendations" v-on:click="getRecommendations(book._id)"/>
+<!--          the button intitiates the recommendations booleans array-->
         </div>
         <div style="display: inline-block;">
-          <h3>Accuracy: {{ book._score }}</h3>
+<!--          div with basic data about the book-->
+          <h3>ES score: {{ book._score }}</h3>
           Title: <h3>{{ book._source.title}}</h3>
           Author: <h3>{{ book._source.authors.flatMap(a => a['name']).join(' ') }}</h3>
           Subject: <div>{{ book._source.subjects.join(' ') }}</div>
@@ -50,6 +53,7 @@
         </div>
       </div>
       <div class="recommendations" v-if="showRecommendations[book._id]">
+<!--        div for listing the recommendations separately for contentBased and subjectBased recommendations-->
       <div v-if="book._source.recommendations.contentBased.length !== 0">
         <h3> Recommendations based on content:</h3>
         <div class="list-entry" >
@@ -86,13 +90,12 @@
 
 <script>
 import axios from 'axios';
-// import FormData from 'form-data';
 
 export default {
   name: 'App',
   components: {},
   data() {
-    return {
+    return { // declarations of the variables used through this Vue page
       firstName: '',
       lastName: '',
       myFile: '',
@@ -106,27 +109,27 @@ export default {
     }
   },
   methods: {
-    getImg(uriArray) {
+    getImg(uriArray) { //get URI with link to thumbnail image hosted on Gutenberg servers
       const k = Object.keys(uriArray).find(uri => uri.includes("image"))
       let uri = uriArray[k].replace("small", "medium")
       return uri
     },
-    getTxtUri(uriArray) {
+    getTxtUri(uriArray) { //open a new window in the browser and go to the .txt format of the book hosted on Gutenberg servers
       window.open(Object.values(uriArray).find(uri => uri.includes(".txt")))
     },
-    getFlagUrl(languages){
+    getFlagUrl(languages){ //simple API call to retrieve flags in .svg format for the language of the book
       let flagUrl
       if (languages[0].toString() === "en"){
         flagUrl = "http://purecatamphetamine.github.io/country-flag-icons/3x2/GB.svg"
       } else flagUrl = "http://purecatamphetamine.github.io/country-flag-icons/3x2/" + languages[0].toString().toUpperCase() + ".svg"
       return flagUrl
     },
-    getRecommendations(id){
+    getRecommendations(id){ //initiate the Booleans array for the recommendations and revert (false --> true) the one that triggered the function
       this.initiateBooleans()
       this.showRecommendations[id] = !this.showRecommendations[id]
     },
 
-    queryDatabase() {
+    queryDatabase() { //axios API call to backend, one function serves both the normal query as well as RegEx
       let requestOptions = {
         headers: {
           'Content-Type': 'multipart/form-data'
@@ -138,10 +141,14 @@ export default {
       };
       axios.get('/api/book', requestOptions
       ).then(res => {
-        this.showQuery = true;
         this.books = [];
         console.log(res.data)
         let json = JSON.parse(JSON.stringify(res.data.books));
+        if (json.length != 0) {
+          this.showQuery = true;
+        } else {
+          this.showQuery = false;
+        }
         for (let entry in json) {
           this.books.push(json[entry])
         }
@@ -150,7 +157,7 @@ export default {
         console.log(err);
       });
     },
-    initiateBooleans(){
+    initiateBooleans(){ //initiate boolean array with false values
       for (let book in this.books) this.showRecommendations[book._id] = false
     }
   }
