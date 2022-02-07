@@ -1,8 +1,8 @@
 <template>
   <div class="container">
     <div>
-      <h2>Search the Library database:</h2>
-      <p>To browse through the books in Library, type in a searched phrase or author and a list of adequate
+      <h2>Search in the library database:</h2>
+      <p>To browse through the books in Gutenberg library, type in a searched phrase or author and a list of adequate
         books will be shown. <br> F.ex "American", "La" (to get results in different languages), or "Odyssey"
       </p>
       <div>
@@ -17,7 +17,7 @@
           <div v-if=showAdvancedSearch>
             <div>
               <h2>Advanced Search:</h2>
-              <div>EXAMPLE REGEX QUERIES - Title only (for dev purp):
+              <div>EXAMPLE REGEX QUERIES - Title only:
                 <p>l.*y</p>
                 <p>lov.*</p>
               </div>
@@ -27,7 +27,7 @@
     </div>
 
     <h2 v-if="showQuery"> List of books for given query: {{query}}</h2>
-
+    <h2 v-else>No books found</h2>
     <div class="list-container" v-for="book in books" :key="book">
       <div class="list-entry">
         <div>
@@ -39,7 +39,7 @@
           <input class="search-button" type="submit" value="Show recommendations" v-on:click="getRecommendations(book._id)"/>
         </div>
         <div style="display: inline-block;">
-          <h3>Accuracy: {{ book._score }}</h3>
+          <h3>ES score: {{ book._score }}</h3>
           Title: <h3>{{ book._source.title}}</h3>
           Author: <h3>{{ book._source.authors.flatMap(a => a['name']).join(' ') }}</h3>
           Subject: <div>{{ book._source.subjects.join(' ') }}</div>
@@ -138,10 +138,14 @@ export default {
       };
       axios.get('/api/book', requestOptions
       ).then(res => {
-        this.showQuery = true;
         this.books = [];
         console.log(res.data)
         let json = JSON.parse(JSON.stringify(res.data.books));
+        if (json.length != 0) {
+          this.showQuery = true;
+        } else {
+          this.showQuery = false;
+        }
         for (let entry in json) {
           this.books.push(json[entry])
         }
